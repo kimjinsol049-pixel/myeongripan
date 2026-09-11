@@ -37,6 +37,7 @@
     if (cur) lines.push(cur);
     return lines;
   }
+  function jo(s) { return (global.Rules && global.Rules.josa) ? global.Rules.josa(s) : String(s); }
   function plain(md) {
     return String(md || '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#+\s*/gm, '')
       .replace(/^\s*[-*]\s+/gm, '').replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -198,9 +199,9 @@
       y += 20;
       ctx.fillStyle = C.line; ctx.fillRect(PAD, y, w, 1); y += 34;
       text(ctx, '일간', PAD, y, '500 17px ' + F.mono, C.gold);
-      y += 30; y += para(ctx, Cm.dm.label + ' — ' + Cm.dm.desc, PAD, y, w, '400 23px ' + F.sans, C.fg, 34, 2) + 18;
+      y += 30; y += para(ctx, jo(Cm.dm.label + ' — ' + Cm.dm.desc), PAD, y, w, '400 23px ' + F.sans, C.fg, 34, 2) + 18;
       text(ctx, '일지 · 배우자궁', PAD, y, '500 17px ' + F.mono, C.gold);
-      y += 30; y += para(ctx, Cm.dayBranch.label + ' — ' + Cm.dayBranch.desc, PAD, y, w, '400 23px ' + F.sans, C.fg, 34, 2) + 22;
+      y += 30; y += para(ctx, jo(Cm.dayBranch.label + ' — ' + Cm.dayBranch.desc), PAD, y, w, '400 23px ' + F.sans, C.fg, 34, 2) + 22;
       if (Cm.relations.length) {
         var cx = PAD, cy = y;
         ctx.font = '400 19px ' + F.mono;

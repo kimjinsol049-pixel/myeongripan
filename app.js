@@ -35,6 +35,8 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+  /** 이름 뒤 "이(가)" 같은 표기를 받침에 맞춰 고른다 (rules.js 의 규칙을 재사용) */
+  function jo(s) { return (window.Rules && Rules.josa) ? Rules.josa(s) : String(s); }
   function el(html) { var t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   var toastTimer;
@@ -1271,8 +1273,8 @@
     var h = [];
     h.push('<div class="hero" style="padding:34px 0 22px"><div class="eyebrow">궁합 · ' + list.length + '명</div>' +
       '<h1 style="font-size:clamp(26px,4vw,38px)">' + list.map(function (p, i) { return nameTag(p, Rs[i]); }).join(' <span style="color:var(--gold)">·</span> ') + '</h1>' +
-      '<p class="mono" style="font-size:14px">평균 ' + G.avg + '점 · 최고 ' + esc(G.best.a + '↔' + G.best.b) + ' ' + G.best.total +
-      '점 · 최저 ' + esc(G.worst.a + '↔' + G.worst.b) + ' ' + G.worst.total + '점</p></div>');
+      '<p class="mono" style="font-size:14px">평균 ' + G.avg + '점 · 최고 ' + esc(G.best.a + ' ↔ ' + G.best.b) + ' ' + G.best.total +
+      '점 · 최저 ' + esc(G.worst.a + ' ↔ ' + G.worst.b) + ' ' + G.worst.total + '점</p></div>');
 
     /* --- 계산 요약 --- */
     h.push('<section class="block"><div class="sec-head"><h2>계산 요약</h2>' +
@@ -1343,8 +1345,8 @@
             '<div class="track"><i style="width:' + c.sub[k] + '%;background:' + scoreColor(c.sub[k]) + '"></i></div></div>';
         }).join('') + '</div></div>' +
         '<dl class="kv" style="margin-bottom:14px">' +
-        '<dt>일간</dt><dd><b>' + esc(c.dm.label) + '</b> — ' + esc(c.dm.desc) + '</dd>' +
-        '<dt>일지</dt><dd><b>' + esc(c.dayBranch.label) + '</b> — ' + esc(c.dayBranch.desc) + '</dd>' +
+        '<dt>' + GL.term('일간') + '</dt><dd><b>' + esc(c.dm.label) + '</b> — ' + jo(esc(c.dm.desc)) + '</dd>' +
+        '<dt>' + GL.term('일지') + '</dt><dd><b>' + esc(c.dayBranch.label) + '</b> — ' + jo(esc(c.dayBranch.desc)) + '</dd>' +
         '<dt>오행</dt><dd>' + (c.balance.improved ? '둘이 만나면 균형이 좋아진다' : '둘이 만나면 한쪽으로 더 쏠린다') + '</dd>' +
         '</dl>' +
         '<div class="chips" style="margin-bottom:6px">' +
