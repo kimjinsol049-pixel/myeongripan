@@ -144,15 +144,17 @@
     { name: '신장·방광, 허리, 귀', weak: '허리와 무릎이 약하고 쉽게 지친다. 찬 데 오래 있으면 안 된다.', over: '몸이 차고 잘 붓는다. 밤에 활동하면 더 나빠진다.' }
   ];
   function health(R) {
-    var score = 84, notes = [], care = [];
+    // 여덟 글자로 다섯 기운을 채우니 한쪽이 치우치는 게 보통이다.
+    // 웬만한 사주가 "보통"에 오도록 잡고, 정말 극단일 때만 크게 깎는다.
+    var score = 88, notes = [], care = [];
     var mx = maxEl(R), mn = minEl(R);
     var pmx = pct(R, mx), pmn = pct(R, mn);
 
-    if (pmx >= 42) { score -= 11; notes.push(S.EL[mx] + '이 ' + pmx + '%로 크게 넘친다'); care.push({ organ: ORGAN[mx].name, why: ORGAN[mx].over }); }
-    else if (pmx >= 33) { score -= 6; notes.push(S.EL[mx] + '이 ' + pmx + '%로 치우친다'); care.push({ organ: ORGAN[mx].name, why: ORGAN[mx].over }); }
-    if (pmn <= 4) { score -= 10; notes.push(S.EL[mn] + '이 ' + pmn + '%로 거의 없다'); care.push({ organ: ORGAN[mn].name, why: ORGAN[mn].weak }); }
-    else if (pmn <= 9) { score -= 5; notes.push(S.EL[mn] + '이 ' + pmn + '%로 약하다'); care.push({ organ: ORGAN[mn].name, why: ORGAN[mn].weak }); }
-    if (pmx < 33 && pmn > 9) { score += 7; notes.push('오행이 고르게 퍼져 큰 구멍이 없다'); }
+    if (pmx >= 45) { score -= 11; notes.push(S.EL[mx] + '이 ' + pmx + '%로 크게 넘친다'); care.push({ organ: ORGAN[mx].name, why: ORGAN[mx].over }); }
+    else if (pmx >= 36) { score -= 6; notes.push(S.EL[mx] + '이 ' + pmx + '%로 치우친다'); care.push({ organ: ORGAN[mx].name, why: ORGAN[mx].over }); }
+    if (pmn <= 3) { score -= 10; notes.push(S.EL[mn] + '이 ' + pmn + '%로 거의 없다'); care.push({ organ: ORGAN[mn].name, why: ORGAN[mn].weak }); }
+    else if (pmn <= 7) { score -= 5; notes.push(S.EL[mn] + '이 ' + pmn + '%로 약하다'); care.push({ organ: ORGAN[mn].name, why: ORGAN[mn].weak }); }
+    if (pmx < 36 && pmn > 7) { score += 6; notes.push('오행이 고르게 퍼져 큰 구멍이 없다'); }
 
     var bad = R.relations.filter(function (r) { return r.good < 0; }).length;
     if (bad) { score -= Math.min(9, bad * 3); notes.push('원국에 충·형·해가 ' + bad + '개라 몸이 자주 신호를 보낸다'); }
