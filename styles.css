@@ -437,8 +437,8 @@ footer.foot p { margin: 0; max-width: 62ch; }
 body.locked { overflow: hidden; }
 .loader {
   position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px;
-  background: color-mix(in srgb, var(--bg) 94%, transparent);
-  backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--bg) 97%, transparent);
+  overflow-y: auto;
 }
 .loader-card { width: min(580px, 100%); text-align: center; }
 .loader .eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: .2em; color: var(--gold); text-transform: uppercase; }
