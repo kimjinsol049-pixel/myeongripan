@@ -17,9 +17,11 @@
       keyUrl: null,
       note: '이 사이트에 연결된 Firebase 프로젝트로 Gemini를 호출합니다. 방문자는 아무것도 등록하지 않아도 바로 씁니다. 비용은 Google의 무료 한도 안에서 처리되며, 한도를 넘으면 잠시 뒤 다시 시도하면 됩니다.',
       defaults: [
-        { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash — 빠르고 안정적', free: true },
-        { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro — 더 깊게 (한도 적음)', free: true },
-        { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite — 가장 가벼움', free: true }
+        { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash — 기본, 빠르고 똑똑함', free: true },
+        { id: 'gemini-flash-latest', label: 'Gemini Flash 최신 — 늘 최신 버전', free: true },
+        { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash — 이전 버전', free: true },
+        { id: 'gemini-flash-lite-latest', label: 'Gemini Flash-Lite — 가장 가볍고 빠름', free: true },
+        { id: 'gemini-pro-latest', label: 'Gemini Pro 최신 — 가장 깊게 (무료 한도 거의 없음)' }
       ]
     },
     {
@@ -37,9 +39,10 @@
       keyUrl: 'https://aistudio.google.com/apikey',
       note: '내 Google AI Studio 키로 직접 호출합니다. 위의 "설정 불필요"가 한도에 걸릴 때 쓰면 됩니다. Flash 계열은 무료 한도(분당·일일 요청 제한) 안에서 비용 없이 씁니다. 한도를 넘으면 잠시 기다렸다가 다시 하세요.',
       defaults: [
-        { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash — 빠름', free: true },
-        { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro — 더 깊게 (무료 한도 적음)', free: true },
-        { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite — 가장 가벼움', free: true }
+        { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash — 빠름', free: true },
+        { id: 'gemini-flash-latest', label: 'Gemini Flash 최신', free: true },
+        { id: 'gemini-flash-lite-latest', label: 'Gemini Flash-Lite — 가장 가벼움', free: true },
+        { id: 'gemini-pro-latest', label: 'Gemini Pro 최신 — 더 깊게 (무료 한도 적음)' }
       ]
     },
     {
@@ -84,6 +87,11 @@
     var cur = ls(LS.prov);
     // 키를 넣은 적 없이 google 로 남아 있던 사용자는 설정 불필요 쪽으로 옮긴다
     if (!cur || (cur === 'google' && !ls(LS.key + 'google'))) lsSet(LS.prov, fallbackProvider());
+    // 서비스가 내린 구버전 Gemini 이름이 저장돼 있으면 비워 기본값으로 되돌린다
+    ['firebase', 'google'].forEach(function (id) {
+      if (/^gemini-2\./.test(ls(LS.model + id))) lsSet(LS.model + id, null);
+      lsSet(LS.list + id, null);
+    });
   })();
 
   function getProvider() {
