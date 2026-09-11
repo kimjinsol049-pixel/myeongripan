@@ -40,6 +40,87 @@
     toastTimer = setTimeout(function () { t.remove(); }, 2600);
   }
 
+  /* ---------- 이름 + 일간 이모지 ---------- */
+  function nameTag(p, R) {
+    if (!R) { try { R = computeOf(p); } catch (e) { R = null; } }
+    var name = esc(p.name || '');
+    if (!R) return name;
+    return name + ' <span class="pe" title="일간 ' + S.STEM_H[R.dm] + ' — ' + esc(S.STEM_OBJ[R.dm]) + '">' + S.STEM_EMOJI[R.dm] + '</span>';
+  }
+
+  /* ---------- 로딩 화면 · 완료 알림 ---------- */
+  var genAbort = false, activeCtl = null;
+  var Loader = (function () {
+    var box = null, total = 0, done = 0, t0 = 0, timer = null, aborted = false;
+    function fmt(s) { var m = Math.floor(s / 60), r = s % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
+    function show(o) {
+      hide(); genAbort = false; aborted = false;
+      total = Math.max(1, o.total || 1); done = 0; t0 = Date.now();
+      var glyphs = (o.glyphs || []).map(function (p, i) {
+        return '<i class="el-' + S.STEM_EL[p.s] + '" style="animation-delay:' + (i * .28) + 's">' + S.STEM_H[p.s] + '</i>' +
+          '<i class="el-' + S.BRANCH_EL[p.b] + '" style="animation-delay:' + (i * .28 + .14) + 's">' + S.BRANCH_H[p.b] + '</i>';
+      }).join('');
+      var canAsk = false;
+      try { canAsk = !!(window.Notification && Notification.permission === 'default'); } catch (e) { }
+      box = el('<div class="loader" role="status" aria-live="polite"><div class="loader-card">' +
+        '<div class="eyebrow">해석 중</div>' +
+        '<h2>' + (o.names || []).join(' <span class="vs">·</span> ') + '</h2>' +
+        (glyphs ? '<div class="glyphs">' + glyphs + '</div>' : '') +
+        '<div class="lsub">' + esc(o.sub || '') + '</div>' +
+        '<div class="ltrack"><i style="width:0%"></i></div>' +
+        '<div class="lstep mono">준비 중</div>' +
+        '<div class="ltime mono">0:00</div>' +
+        '<div class="row-actions" style="justify-content:center">' +
+        '<button type="button" class="btn ghost sm" data-l="peek">계산 결과 먼저 보기</button>' +
+        (canAsk ? '<button type="button" class="btn ghost sm" data-l="notify">끝나면 알림 받기</button>' : '') +
+        '<button type="button" class="btn danger sm" data-l="stop">중단</button></div>' +
+        '<p class="lnote">전부 끝나면 이 화면이 닫히고 알려드립니다. 다른 탭을 봐도 됩니다.</p>' +
+        '</div></div>');
+      document.body.appendChild(box);
+      document.body.classList.add('locked');
+      box.addEventListener('click', function (e) {
+        var b = e.target.closest('button[data-l]'); if (!b) return;
+        if (b.dataset.l === 'peek') hide();
+        else if (b.dataset.l === 'stop') { aborted = true; genAbort = true; if (activeCtl) activeCtl.abort(); }
+        else if (b.dataset.l === 'notify') {
+          try { Notification.requestPermission().then(function () { b.remove(); }); } catch (er) { b.remove(); }
+        }
+      });
+      timer = setInterval(function () {
+        var t = box && $('.ltime', box);
+        if (t) t.textContent = fmt(Math.round((Date.now() - t0) / 1000));
+      }, 1000);
+    }
+    function batchStart(label) {
+      if (!box) return;
+      var s = $('.lstep', box); if (s) s.textContent = (done + 1) + '/' + total + ' — ' + label;
+    }
+    function batchDone() {
+      done++;
+      if (!box) return;
+      var i = $('.ltrack i', box); if (i) i.style.width = Math.round(Math.min(1, done / total) * 100) + '%';
+    }
+    function hide() {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (box) { box.remove(); box = null; }
+      document.body.classList.remove('locked');
+    }
+    function end(msg) {
+      hide();
+      if (aborted || genAbort) { toast('중단했습니다'); return; }
+      if (msg) notifyDone(msg);
+    }
+    return { show: show, hide: hide, end: end, batchStart: batchStart, batchDone: batchDone };
+  })();
+  function notifyDone(msg) {
+    toast(msg);
+    var old = document.title;
+    document.title = '✓ ' + msg;
+    setTimeout(function () { document.title = old; }, 8000);
+    try { if (window.Notification && Notification.permission === 'granted' && document.hidden) new Notification('명리판', { body: msg }); } catch (e) { }
+    try { if (navigator.vibrate) navigator.vibrate(60); } catch (e) { }
+  }
+
   /* ---------- 마크다운 ---------- */
   function md(text) {
     var lines = String(text).split('\n');
@@ -352,7 +433,8 @@
   function runBatches(opts) {
     // opts: {batches:[[ids]], defs, buildPrompt(ids), store, root, progressEl, onDone, tier}
     var ctl = new AbortController();
-    var total = opts.batches.length, done = 0;
+    activeCtl = ctl;
+    var total = opts.batches.length, done = 0, failed = 0;
     var prog = opts.progressEl;
     if (prog) {
       prog.hidden = false;
@@ -376,13 +458,15 @@
         if (opts.onNoAI) opts.onNoAI();
         return false;
       }
+      if (genAbort) { if (prog) prog.hidden = true; return false; }
       var chain = Promise.resolve();
       opts.batches.forEach(function (ids, bi) {
         chain = chain.then(function () {
-          if (ctl.signal.aborted) return;
+          if (ctl.signal.aborted || genAbort) return;
           var defs = opts.defs.filter(function (d) { return ids.indexOf(d.id) >= 0; });
           var titles = defs.map(function (d) { return d.title; }).join(' · ');
           setProg('생성 중 ' + (bi + 1) + '/' + total + ' — ' + titles, done / total);
+          Loader.batchStart(titles);
           defs.forEach(function (d) {
             var b = bodyOf(d.id);
             if (b && !b.querySelector('.writing')) b.insertAdjacentHTML('afterbegin', '<p class="pending cursor writing">AI가 쓰는 중 — 아래는 계산 기반 요약</p>');
@@ -409,6 +493,7 @@
               else restoreRule(d);
             });
             if (res.truncated) toast('답이 길어 잘렸습니다. 해당 항목만 다시 생성하세요.');
+            Loader.batchDone();
             done++;
             setProg('생성 중 ' + done + '/' + total, done / total);
             if (opts.onBatch) opts.onBatch();
@@ -421,6 +506,8 @@
               b.insertAdjacentHTML('afterbegin', '<p class="pending">' + esc(msg) + '</p>');
             });
             if (e && e.code === 'cancelled') throw e;
+            failed++;
+            Loader.batchDone();
             done++;
             setProg('생성 중 ' + done + '/' + total, done / total);
           });
@@ -428,11 +515,11 @@
       });
       return chain.then(function () {
         if (prog) prog.hidden = true;
-        if (opts.onDone) opts.onDone();
+        if (opts.onDone) opts.onDone({ failed: failed, total: total, cancelled: false });
         return true;
       }).catch(function () {
         if (prog) prog.hidden = true;
-        if (opts.onDone) opts.onDone();
+        if (opts.onDone) opts.onDone({ failed: failed, total: total, cancelled: true });
         return false;
       });
     });
@@ -523,7 +610,7 @@
         try { R = computeOf(p); } catch (e) { R = null; }
         return '<div class="person" data-open="' + p.id + '" role="button" tabindex="0">' +
           '<button class="x" data-del="' + p.id + '" title="삭제" aria-label="삭제">×</button>' +
-          '<div class="nm">' + esc(p.name) + ' <em>' + (p.gender === 'M' ? '남' : '여') + '</em></div>' +
+          '<div class="nm">' + nameTag(p, R) + ' <em>' + (p.gender === 'M' ? '남' : '여') + '</em></div>' +
           '<div class="dt">' + esc(personLabel(p)) + '</div>' +
           (R ? '<div class="gzrow">' + R.pillars.map(function (q) { return S.gz(q.s, q.b); }).join(' ') + '</div>' +
             '<div class="dt">' + esc(R.gyeok + ' · ' + R.strength.label + ' · 용신 ' + S.EL[R.yongsin.main]) + '</div>'
@@ -538,7 +625,7 @@
         matchStore.map(function (m) {
           return '<div class="person" data-openmatch="' + m.id + '" role="button" tabindex="0">' +
             '<button class="x" data-delmatch="' + m.id + '" title="삭제" aria-label="삭제">×</button>' +
-            '<div class="nm">' + esc(m.title) + '</div>' +
+            '<div class="nm">' + m.snapshot.map(function (q) { return nameTag(q); }).join(' <span style="color:var(--gold)">·</span> ') + '</div>' +
             '<div class="dt">' + m.snapshot.length + '명 · 평균 ' + m.avg + '점 · ' + new Date(m.at).toLocaleDateString('ko-KR') + '</div>' +
             '</div>';
         }).join('') + '</div></section>');
@@ -792,7 +879,7 @@
 
     var h = [];
     h.push('<div class="hero" style="padding:34px 0 24px"><div class="eyebrow">사주 원국</div>' +
-      '<h1 style="font-size:clamp(26px,4vw,38px)">' + esc(person.name) + '</h1>' +
+      '<h1 style="font-size:clamp(26px,4vw,38px)">' + nameTag(person, R) + '</h1>' +
       '<p class="mono" style="font-size:14px">' + esc(personLabel(person)) +
       ' · ' + R.pillars.map(function (q) { return S.gz(q.s, q.b); }).join(' ') + '</p></div>');
 
@@ -832,16 +919,22 @@
       }).filter(function (b) { return b.length; });
       if (!batches.length) { if (btn) btn.disabled = false; return; }
       function persist() { if (!readOnly) { soloStore[person.id] = store; save(K.solo, soloStore); } }
+      Loader.show({
+        names: [nameTag(person, R)], glyphs: R.active, total: batches.length,
+        sub: '항목 ' + ids.length + '개 · 호출 ' + batches.length + '회'
+      });
       runBatches({
         batches: batches, defs: defs, store: store, refresh: !!force,
         root: $('#sections'), progressEl: $('#prog'),
         rules: function (id) { return RU.solo(R, id); },
-        onNoAI: function () { aiOffNote($('#aistat')); if (btn) btn.disabled = false; },
+        onNoAI: function () { Loader.hide(); aiOffNote($('#aistat')); if (btn) btn.disabled = false; },
         buildPrompt: function (bids) { return I.soloPrompt(R, bids); },
         onBatch: persist,
-        onDone: function () {
+        onDone: function (r) {
           if (btn) { btn.disabled = false; btn.textContent = '해석 다시 생성'; }
           persist();
+          if (r && r.failed) { Loader.end(); if (!r.cancelled) toast(r.failed + '개 항목 생성에 실패했습니다. 항목의 안내를 확인하세요.'); }
+          else Loader.end(person.name + '의 사주 해석이 끝났습니다');
         }
       });
     }
@@ -873,7 +966,7 @@
       h.push('<div class="people" id="picklist">' + people.map(function (p) {
         var R = null; try { R = computeOf(p); } catch (e) { }
         return '<div class="person" role="button" tabindex="0" data-pick="' + p.id + '" aria-pressed="' + (matchPick.indexOf(p.id) >= 0) + '">' +
-          '<div class="nm">' + esc(p.name) + ' <em>' + (p.gender === 'M' ? '남' : '여') + '</em></div>' +
+          '<div class="nm">' + nameTag(p, R) + ' <em>' + (p.gender === 'M' ? '남' : '여') + '</em></div>' +
           '<div class="dt">' + esc(personLabel(p)) + '</div>' +
           (R ? '<div class="gzrow">' + R.pillars.map(function (q) { return S.gz(q.s, q.b); }).join(' ') + '</div>' : '') +
           '<div class="pick">' + (matchPick.indexOf(p.id) >= 0 ? '선택됨' : '&nbsp;') + '</div></div>';
@@ -950,7 +1043,7 @@
 
     var h = [];
     h.push('<div class="hero" style="padding:34px 0 22px"><div class="eyebrow">궁합 · ' + list.length + '명</div>' +
-      '<h1 style="font-size:clamp(26px,4vw,38px)">' + esc(title) + '</h1>' +
+      '<h1 style="font-size:clamp(26px,4vw,38px)">' + list.map(function (p, i) { return nameTag(p, Rs[i]); }).join(' <span style="color:var(--gold)">·</span> ') + '</h1>' +
       '<p class="mono" style="font-size:14px">평균 ' + G.avg + '점 · 최고 ' + esc(G.best.a + '↔' + G.best.b) + ' ' + G.best.total +
       '점 · 최저 ' + esc(G.worst.a + '↔' + G.worst.b) + ' ' + G.worst.total + '점</p></div>');
 
@@ -970,9 +1063,9 @@
       (G.over.length ? '<b style="color:var(--warn)">과다: ' + G.over.join(', ') + '</b> — 이 기운으로 서로 부딪힙니다.' : '') +
       (!G.missing.length && !G.over.length ? '다섯 기운이 고르게 깔렸습니다. 한쪽으로 쏠리지 않는 조합입니다.' : '') +
       '</p></div>');
-    h.push('<div class="panel"><h3>기본 포지션</h3><div class="roles">' + G.roles.map(function (r) {
+    h.push('<div class="panel"><h3>기본 포지션</h3><div class="roles">' + G.roles.map(function (r, ri) {
       return '<div class="role" style="border-left-color:var(--' + ['wood', 'fire', 'earth', 'metal', 'water'][r.el] + ')">' +
-        '<h4>' + esc(r.name) + '</h4><div class="rl">' + esc(r.role.name) + ' — ' + esc(r.role.desc) + '</div>' +
+        '<h4>' + nameTag(list[ri], Rs[ri]) + '</h4><div class="rl">' + esc(r.role.name) + ' — ' + esc(r.role.desc) + '</div>' +
         '<div class="meta">' + S.EL_H[r.el] + ' ' + S.EL[r.el] + ' · ' + esc(r.strength) + ' · ' + esc(r.gyeok) + '</div></div>';
     }).join('') + '</div></div>');
     h.push('</div></section>');
@@ -993,7 +1086,7 @@
       var key = pairKey(c.i, c.j);
       var st = stores[key] = stores[key] || {};
       h.push('<div class="pair-card" data-pair="' + key + '"><header>' +
-        '<h3>' + esc(c.a) + ' <span class="vs">↔</span> ' + esc(c.b) + '</h3>' +
+        '<h3>' + nameTag(list[c.i], Rs[c.i]) + ' <span class="vs">↔</span> ' + nameTag(list[c.j], Rs[c.j]) + '</h3>' +
         '<button class="btn ghost sm" data-genpair="' + key + '" style="margin-left:auto">이 쌍만 생성</button>' +
         '</header>' +
         '<div class="score-head" style="margin-bottom:18px">' +
@@ -1042,7 +1135,7 @@
       shareUI('match', { list: list, stores: stores, groupStore: groupStore });
     };
     app.querySelectorAll('[data-genpair]').forEach(function (b) {
-      b.onclick = function () { genPair(b.dataset.genpair, true); };
+      b.onclick = function () { genPair(b.dataset.genpair, true, true); };
     });
     if (!readOnly) {
       $('#home').onclick = function () { go('home'); };
@@ -1071,23 +1164,51 @@
       return I.chatSeed(ctxText.slice(0, 32000), gen.join('\n\n'));
     });
 
-    function genPair(key, force) {
+    function pairBatchList(key, force) {
+      var st = stores[key] || {};
+      var ids = force ? pairDefs.map(function (d) { return d.id; })
+        : pairDefs.filter(function (d) { return !st[d.id]; }).map(function (d) { return d.id; });
+      return pairBatches.map(function (b) { return b.filter(function (x) { return ids.indexOf(x) >= 0; }); })
+        .filter(function (b) { return b.length; });
+    }
+    function groupBatchList(force) {
+      var ids = force ? I.GROUP_SECTIONS.map(function (d) { return d.id; })
+        : I.GROUP_SECTIONS.filter(function (d) { return !groupStore[d.id]; }).map(function (d) { return d.id; });
+      return I.GROUP_BATCHES.map(function (b) { return b.filter(function (x) { return ids.indexOf(x) >= 0; }); })
+        .filter(function (b) { return b.length; });
+    }
+    var anyFailed = 0;
+    function genPair(key, force, standalone) {
       var c = G.pairs.filter(function (x) { return pairKey(x.i, x.j) === key; })[0];
       if (!c) return Promise.resolve();
       var st = stores[key];
-      var ids = force ? pairDefs.map(function (d) { return d.id; })
-        : pairDefs.filter(function (d) { return !st[d.id]; }).map(function (d) { return d.id; });
-      var batches = pairBatches.map(function (b) { return b.filter(function (x) { return ids.indexOf(x) >= 0; }); })
-        .filter(function (b) { return b.length; });
+      var batches = pairBatchList(key, force);
       if (!batches.length) return Promise.resolve();
+      if (standalone) {
+        anyFailed = 0;
+        Loader.show({
+          names: [nameTag(list[c.i], Rs[c.i]), nameTag(list[c.j], Rs[c.j])],
+          glyphs: [Rs[c.i].pillars[2], Rs[c.j].pillars[2]], total: batches.length,
+          sub: '이 쌍만 · 호출 ' + batches.length + '회'
+        });
+      }
       return runBatches({
         batches: batches, defs: pairDefs, store: st, refresh: !!force,
         root: $('#sec-' + key), progressEl: $('#prog'),
         rules: function (id) { return RU.pair(Rs[c.i], Rs[c.j], c, id); },
-        onNoAI: function () { aiOffNote($('#aistat')); },
+        onNoAI: function () { Loader.hide(); aiOffNote($('#aistat')); },
         buildPrompt: function (bids) { return I.pairPrompt(Rs[c.i], Rs[c.j], c, bids); },
-        onBatch: persistMatch, onDone: persistMatch
+        onBatch: persistMatch,
+        onDone: function (r) {
+          persistMatch();
+          if (r && r.failed) anyFailed += r.failed;
+          if (standalone) finishLoader(c.a + ' ↔ ' + c.b + ' 궁합 해석이 끝났습니다');
+        }
       });
+    }
+    function finishLoader(msg) {
+      if (anyFailed) { Loader.end(); if (!genAbort) toast(anyFailed + '개 항목 생성에 실패했습니다. 항목의 안내를 확인하세요.'); }
+      else Loader.end(msg);
     }
     function persistMatch() {
       if (readOnly || !meta || !meta.id) return;
@@ -1097,30 +1218,39 @@
       save(K.match, matchStore);
     }
     function genGroup(force) {
-      var ids = force ? I.GROUP_SECTIONS.map(function (d) { return d.id; })
-        : I.GROUP_SECTIONS.filter(function (d) { return !groupStore[d.id]; }).map(function (d) { return d.id; });
-      var batches = I.GROUP_BATCHES.map(function (b) { return b.filter(function (x) { return ids.indexOf(x) >= 0; }); })
-        .filter(function (b) { return b.length; });
+      var batches = groupBatchList(force);
       if (!batches.length) return Promise.resolve();
       return runBatches({
         batches: batches, defs: I.GROUP_SECTIONS, store: groupStore, refresh: !!force,
         root: $('#sec-group'), progressEl: $('#prog'),
         rules: function (id) { return RU.group(Rs, G, id); },
-        onNoAI: function () { aiOffNote($('#aistat')); },
+        onNoAI: function () { Loader.hide(); aiOffNote($('#aistat')); },
         buildPrompt: function (bids) { return I.groupPrompt(Rs, G, bids); },
-        onBatch: persistMatch, onDone: persistMatch
+        onBatch: persistMatch,
+        onDone: function (r) { persistMatch(); if (r && r.failed) anyFailed += r.failed; }
       });
     }
     function genAll(force) {
       var btn = $('#genall'); if (btn) btn.disabled = true;
+      var steps = 0;
+      G.pairs.forEach(function (c) { steps += pairBatchList(pairKey(c.i, c.j), force).length; });
+      if (many) steps += groupBatchList(force).length;
+      if (!steps) { if (btn) btn.disabled = false; return; }
+      anyFailed = 0;
+      Loader.show({
+        names: list.map(function (p, i) { return nameTag(p, Rs[i]); }),
+        glyphs: Rs.slice(0, 6).map(function (R) { return R.pillars[2]; }),
+        total: steps,
+        sub: '쌍 ' + G.pairs.length + '개' + (many ? ' + 전체 종합' : '') + ' · 호출 ' + steps + '회'
+      });
       var chain = Promise.resolve();
       G.pairs.forEach(function (c) {
-        chain = chain.then(function () { return genPair(pairKey(c.i, c.j), force); });
+        chain = chain.then(function () { if (genAbort) return; return genPair(pairKey(c.i, c.j), force); });
       });
-      if (many) chain = chain.then(function () { return genGroup(force); });
+      if (many) chain = chain.then(function () { if (genAbort) return; return genGroup(force); });
       chain.then(function () {
         if (btn) { btn.disabled = false; btn.textContent = '전체 해석 다시 생성'; }
-        toast('해석을 모두 생성했습니다');
+        finishLoader('궁합 해석이 모두 끝났습니다');
       });
     }
 
@@ -1150,10 +1280,10 @@
   function matrixHTML(list, G) {
     var n = list.length, i, j;
     var h = ['<table class="matrix"><thead><tr><th></th>'];
-    for (j = 0; j < n; j++) h.push('<th>' + esc(list[j].name) + '</th>');
+    for (j = 0; j < n; j++) h.push('<th>' + nameTag(list[j]) + '</th>');
     h.push('</tr></thead><tbody>');
     for (i = 0; i < n; i++) {
-      h.push('<tr><th class="rowh">' + esc(list[i].name) + '</th>');
+      h.push('<tr><th class="rowh">' + nameTag(list[i]) + '</th>');
       for (j = 0; j < n; j++) {
         if (i === j) { h.push('<td class="self">—</td>'); continue; }
         var c = G.pairs.filter(function (p) {

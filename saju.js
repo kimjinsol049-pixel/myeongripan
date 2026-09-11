@@ -15,6 +15,9 @@
   var BRANCH = ['자', '축', '인', '묘', '진', '사', '오', '미', '신', '유', '술', '해'];
   var BRANCH_H = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
   var ZODIAC = ['쥐', '소', '호랑이', '토끼', '용', '뱀', '말', '양', '원숭이', '닭', '개', '돼지'];
+  // 일간 물상 — 사람을 대표하는 이모지와 그 뜻
+  var STEM_EMOJI = ['🌳', '🌿', '☀️', '🕯️', '⛰️', '🌾', '⚔️', '💎', '🌊', '💧'];
+  var STEM_OBJ = ['큰 나무', '덩굴과 풀', '태양', '등불', '큰 산', '논밭의 흙', '원석과 무기', '보석과 칼날', '큰 강과 바다', '빗물과 샘'];
 
   // 오행 0목 1화 2토 3금 4수
   var EL = ['목', '화', '토', '금', '수'];
@@ -915,6 +918,7 @@
     STEM: STEM, STEM_H: STEM_H, BRANCH: BRANCH, BRANCH_H: BRANCH_H,
     EL: EL, EL_H: EL_H, STEM_EL: STEM_EL, BRANCH_EL: BRANCH_EL,
     STEM_YIN: STEM_YIN, BRANCH_YIN: BRANCH_YIN, ZODIAC: ZODIAC,
+    STEM_EMOJI: STEM_EMOJI, STEM_OBJ: STEM_OBJ,
     HIDDEN: HIDDEN, TERM_NAME: TERM_NAME, JEOL_NAME: JEOL_NAME,
     GOD_GROUP: GOD_GROUP, ROLE_BY_EL: ROLE_BY_EL,
     compute: compute, compat: compat, groupAnalyze: groupAnalyze,
