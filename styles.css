@@ -460,6 +460,45 @@ body.locked { overflow: hidden; }
 .loader .lnote { font-size: 12.5px; color: var(--fg-3); margin: 14px 0 0; }
 @media (prefers-reduced-motion: reduce) { .loader .glyphs i { animation: none; opacity: .85; } }
 
+/* ===== 용어 툴팁 · 용어 풀이 ===== */
+.term { border-bottom: 1px dotted var(--fg-3); cursor: help; }
+.glossary { margin-top: 26px; }
+.glossary .gl { display: grid; grid-template-columns: max-content 1fr; gap: 7px 18px; font-size: 14px; margin: 14px 0 0; }
+.glossary dt { color: var(--gold); font-weight: 600; }
+.glossary dd { margin: 0; color: var(--fg-2); max-width: 70ch; }
+.gnote { font-size: 13.5px; color: var(--fg-3); margin: 10px 0 0; max-width: 64ch; }
+@media (max-width: 640px) { .glossary .gl { grid-template-columns: 1fr; gap: 2px 0; } .glossary dd { margin-bottom: 8px; } }
+
+/* ===== 계정 칩 ===== */
+.acct {
+  background: none; border: 1px solid var(--gold-soft); color: var(--gold); border-radius: 999px;
+  padding: 5px 12px; font-size: 13px; cursor: pointer; margin-left: 6px; white-space: nowrap; font-family: var(--sans);
+}
+.acct:hover { background: color-mix(in srgb, var(--gold) 10%, transparent); }
+
+/* ===== 인쇄 (PDF 저장) ===== */
+@page { margin: 16mm; }
+@media print {
+  :root, :root[data-theme="dark"], :root[data-theme="light"], :root:not([data-theme="light"]) {
+    --bg: #fff; --bg-2: #fff; --bg-3: #fafafa; --bg-4: #eee; --line: #bbb; --line-soft: #ddd;
+    --fg: #111; --fg-2: #333; --fg-3: #666; --gold: #7a5c14; --gold-soft: #c9b98a; --gold-ink: #fff;
+    --wood: #2E7049; --fire: #A6332B; --earth: #8A6224; --metal: #56637A; --water: #275C92;
+  }
+  body::before, .top, .row-actions, .chat, #aisec, #accsec, .share-box, .loader, .banner, .progress,
+  .glossary, .suggest, .icon-btn, .toast, .person .x, #aistat, .sec .sec-tools, .rule-tag, .writing, button { display: none !important; }
+  body { font-size: 12.5px; }
+  .wrap { max-width: none; padding: 0; }
+  .hero { padding: 0 0 10px; }
+  .plate-wrap, .daewoon { overflow: visible; }
+  .plate, .pair-card, .panel, .sec, .daewoon { break-inside: avoid; page-break-inside: avoid; }
+  .sec { padding: 14px 0; }
+  .sec > h3 { font-size: 18px; }
+  .sec .body { max-width: none; }
+  .pair-card { border-color: #bbb; }
+  footer.foot { border-top: 1px solid #bbb; font-size: 11px; }
+  a { color: inherit; text-decoration: none; }
+}
+
 .toast {
   position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
   background: var(--fg); color: var(--bg); padding: 10px 18px; border-radius: 999px;

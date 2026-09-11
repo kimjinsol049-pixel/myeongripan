@@ -13,7 +13,13 @@
     try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : def; }
     catch (e) { return def; }
   }
-  function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { toast('저장 공간이 부족합니다'); } }
+  function saveLocal(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { toast('저장 공간이 부족합니다'); } }
+  function allData() { return { people: people, solo: soloStore, match: matchStore }; }
+  // 저장하면 로컬에 쓰고, 로그인 상태면 서버에도 올린다
+  function save(k, v) {
+    saveLocal(k, v);
+    if (window.Sync && Sync.user() && (k === K.people || k === K.solo || k === K.match)) Sync.schedulePush(allData);
+  }
 
   var people = load(K.people, []);
   var soloStore = load(K.solo, {});
@@ -185,7 +191,7 @@
   function norm(s) { return String(s).replace(/[\s·・,.'"‘’“”()·]/g, '').toLowerCase(); }
 
   /* ---------- 해석 공급자 (ai.js) · 규칙 판정 (rules.js) ---------- */
-  var AIP = window.AI, RU = window.Rules;
+  var AIP = window.AI, RU = window.Rules, GL = window.Glossary, Card = window.Card;
   var ERRCOPY = {
     not_granted: 'AI 해석이 꺼져 있습니다. 첫 화면의 "AI 해석 설정"에서 켜면 각 항목을 길게 씁니다.',
     bad_key: 'API 키가 틀렸거나 만료됐습니다. 첫 화면의 "AI 해석 설정"에서 다시 넣으세요.',
@@ -264,7 +270,7 @@
       h.push('<div class="colhead' + (i === 2 ? ' day' : '') + (i === 3 && R.unknownTime ? ' dim' : '') + '">' +
         names[i] + (i === 3 && R.unknownTime ? ' · 모름' : '') + '</div>');
     });
-    h.push('<div class="rowlab">천간 십신</div>');
+    h.push('<div class="rowlab">' + GL.term('십신', '천간 십신') + '</div>');
     order.forEach(function (i) {
       h.push('<div class="god' + c(i) + '">' +
         (i === 2 ? '<b style="color:var(--gold)">일간</b>' : esc(R.pillars[i].stemGod)) + '</div>');
@@ -286,16 +292,16 @@
         '<span class="k">' + S.BRANCH[p.b] + ' · ' + S.EL[e] + (gm ? ' · 공망' : '') + '</span>' +
         '<span class="stripe bg-' + e + '"></span></div>');
     });
-    h.push('<div class="rowlab">지지 십신</div>');
+    h.push('<div class="rowlab">' + GL.term('십신', '지지 십신') + '</div>');
     order.forEach(function (i) {
       h.push('<div class="god' + c(i) + '">' + esc(R.pillars[i].branchGod) + '</div>');
     });
-    h.push('<div class="rowlab">지장간</div>');
+    h.push('<div class="rowlab">' + GL.term('지장간') + '</div>');
     order.forEach(function (i) {
       h.push('<div class="hid' + c(i) + '">' +
         R.pillars[i].hidden.map(function (s) { return S.STEM_H[s]; }).join('') + '</div>');
     });
-    h.push('<div class="rowlab">십이운성</div>');
+    h.push('<div class="rowlab">' + GL.term('십이운성') + '</div>');
     order.forEach(function (i) {
       h.push('<div class="stage' + c(i) + '">' + esc(R.pillars[i].stage) + '</div>');
     });
@@ -326,25 +332,25 @@
     }
     var h = ['<div class="panels">'];
 
-    h.push('<div class="panel"><h3>오행 세력</h3>' + elbarHTML(R.scores) + '</div>');
+    h.push('<div class="panel"><h3>' + GL.term('오행', '오행 세력') + '</h3>' + elbarHTML(R.scores) + '</div>');
 
-    h.push('<div class="panel"><h3>일간 강약</h3>' +
+    h.push('<div class="panel"><h3>' + GL.term('일간 강약') + '</h3>' +
       '<div class="gauge"><i class="bg-' + (R.strength.pct < 47 ? 4 : 1) + '" style="width:' + Math.round(R.strength.pct) + '%"></i>' +
       '<span class="gauge-mark" style="left:50%"></span></div>' +
       '<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--fg-3)" class="mono">' +
       '<span>신약</span><b style="color:var(--gold)">' + R.strength.label + ' ' + Math.round(R.strength.pct) + '</b><span>신강</span></div>' +
       '<dl class="kv" style="margin-top:10px">' +
-      '<dt>월령</dt><dd>' + (R.strength.deukryeong ? '득령 — 태어난 달이 나를 돕는다' : '실령 — 태어난 달이 나를 돕지 않는다') + '</dd>' +
-      '<dt>격국</dt><dd><b>' + esc(R.gyeok) + '</b></dd>' +
-      '<dt>용신</dt><dd><b>' + S.EL[y.main] + '</b>' +
-      (y.sub >= 0 ? ' · 희신 ' + S.EL[y.sub] : '') +
-      (y.johu >= 0 ? ' · 조후 ' + S.EL[y.johu] : '') + ' / 기신 ' + S.EL[y.gi] + '</dd>' +
+      '<dt>' + GL.term('월령') + '</dt><dd>' + (R.strength.deukryeong ? GL.term('득령') + ' — 태어난 달이 나를 돕는다' : GL.term('실령') + ' — 태어난 달이 나를 돕지 않는다') + '</dd>' +
+      '<dt>' + GL.term('격국') + '</dt><dd><b>' + esc(R.gyeok) + '</b></dd>' +
+      '<dt>' + GL.term('용신') + '</dt><dd><b>' + S.EL[y.main] + '</b>' +
+      (y.sub >= 0 ? ' · ' + GL.term('희신') + ' ' + S.EL[y.sub] : '') +
+      (y.johu >= 0 ? ' · ' + GL.term('조후') + ' ' + S.EL[y.johu] : '') + ' / ' + GL.term('기신') + ' ' + S.EL[y.gi] + '</dd>' +
       '</dl></div>');
 
-    h.push('<div class="panel"><h3>십신 분포</h3>' +
+    h.push('<div class="panel"><h3>' + GL.term('십신', '십신 분포') + '</h3>' +
       Object.keys(R.godCount).map(function (g) {
         var v = R.godCount[g];
-        return '<div class="subbar" style="margin-bottom:7px"><div class="lab"><span>' + g + '</span><b>' + v + '</b></div>' +
+        return '<div class="subbar" style="margin-bottom:7px"><div class="lab"><span>' + GL.term(g) + '</span><b>' + v + '</b></div>' +
           '<div class="track"><i class="bg-' + ({ 비겁: 0, 식상: 1, 재성: 2, 관성: 3, 인성: 4 })[g] + '" style="width:' + Math.min(100, v * 20) + '%"></i></div></div>';
       }).join('') + '</div>');
 
@@ -354,7 +360,7 @@
       '<dt>띠</dt><dd>' + R.zodiac + '띠 (' + R.sajuYear + '년생 기준)</dd>' +
       '<dt>양력</dt><dd class="mono">' + R.solar.y + '-' + pad(R.solar.m) + '-' + pad(R.solar.d) + '</dd>' +
       (R.lunar ? '<dt>음력</dt><dd class="mono">' + R.lunar.y + '-' + pad(R.lunar.m) + '-' + pad(R.lunar.d) + (R.lunar.leap ? ' (윤달)' : '') + '</dd>' : '') +
-      '<dt>공망</dt><dd>' + R.gongmang.map(function (b) { return S.BRANCH_H[b]; }).join('') + '</dd>' +
+      '<dt>' + GL.term('공망') + '</dt><dd>' + R.gongmang.map(function (b) { return S.BRANCH_H[b]; }).join('') + '</dd>' +
       (R.dst ? '<dt>서머타임</dt><dd>적용 (1시간 보정)</dd>' : '') +
       (R.tzOffset !== 9 ? '<dt>표준시</dt><dd>UTC+' + R.tzOffset + ' (동경 127.5° 기준 시기)</dd>' : '') +
       (R.unknownTime ? '' : '<dt>시간 보정</dt><dd>' + ({
@@ -368,17 +374,17 @@
 
     // 신살 · 원국 관계
     h.push('<div class="panels" style="margin-top:22px">');
-    h.push('<div class="panel"><h3>신살</h3><div class="chips">' +
+    h.push('<div class="panel"><h3>' + GL.term('신살') + '</h3><div class="chips">' +
       (R.shinsal.length ? R.shinsal.map(function (s) { return '<span class="chip gold">' + esc(s) + '</span>'; }).join('')
         : '<span class="chip">두드러진 신살 없음</span>') + '</div></div>');
-    h.push('<div class="panel"><h3>원국 내부 관계</h3><div class="chips">' +
+    h.push('<div class="panel"><h3>' + GL.term('원국 내부 관계') + '</h3><div class="chips">' +
       (R.relations.length ? R.relations.map(function (r) {
         return '<span class="chip ' + (r.good > 0 ? 'good' : 'bad') + '"><span class="p">' + esc(r.a + r.b) + '</span>' + esc(r.text) + '</span>';
       }).join('') : '<span class="chip">합충형해파 없음</span>') + '</div></div>');
     h.push('</div>');
 
     // 대운
-    h.push('<div class="panel" style="margin-top:24px"><h3>대운 · ' + (R.daewoon.forward ? '순행' : '역행') +
+    h.push('<div class="panel" style="margin-top:24px"><h3>' + GL.term('대운') + ' · ' + (R.daewoon.forward ? '순행' : '역행') +
       ' · 대운수 ' + R.daewoon.num + '</h3><div class="daewoon">' +
       R.daewoon.list.map(function (d, i) {
         return '<div class="' + (i === curIdx ? 'now' : '') + '">' +
@@ -631,6 +637,9 @@
         }).join('') + '</div></section>');
     }
 
+    h.push('<section class="block" id="accsec"><div class="sec-head"><h2>계정 · 기기 간 동기화</h2>' +
+      '<span class="note" id="accnote">확인 중…</span></div><div id="accbody"></div></section>');
+
     h.push('<section class="block" id="aisec"><div class="sec-head"><h2>AI 해석 설정</h2>' +
       '<span class="note" id="aiprov">확인 중…</span></div><div id="aibody"></div></section>');
 
@@ -675,6 +684,7 @@
       go('shared', code.replace(/[\s"']/g, ''));
     };
     renderAISettings();
+    renderAccount();
     app.querySelectorAll('[data-delmatch]').forEach(function (b) {
       b.onclick = function (e) {
         e.stopPropagation();
@@ -682,6 +692,172 @@
         matchStore = matchStore.filter(function (x) { return x.id !== b.dataset.delmatch; });
         save(K.match, matchStore); render();
       };
+    });
+  }
+
+  /* ---------- 이미지 · PDF ---------- */
+  function saveImage(makeCanvas, filename) {
+    toast('이미지를 만드는 중…');
+    return makeCanvas().then(function (cv) { return Card.save(cv, filename); })
+      .then(function () { toast('이미지를 저장했습니다'); })
+      .catch(function (e) {
+        var code = e && e.code;
+        if (code === 'declined') return;
+        if (code === 'unavailable' || code === 'not_granted' || code === 'capability_disabled') toast('이 화면에서는 저장이 막혀 있습니다. 웹사이트에서 저장하세요.');
+        else if (code === 'rate_limited') toast('저장 창이 이미 열려 있습니다.');
+        else toast('이미지 저장에 실패했습니다');
+      });
+  }
+  function printPDF() {
+    document.querySelectorAll('details.glossary').forEach(function (d) { d.open = false; });
+    toast('인쇄 창에서 대상을 "PDF로 저장"으로 고르세요');
+    try { setTimeout(function () { window.print(); }, 250); }
+    catch (e) { toast('이 화면에서는 인쇄가 막혀 있습니다. 웹사이트에서 저장하세요.'); }
+  }
+
+  /* ---------- 계정 · 동기화 ---------- */
+  function codeUI() {
+    return '<details class="adv" style="margin-top:14px"><summary>동기화 코드로 옮기기 (서버 없이)</summary>' +
+      '<p class="gnote">이 브라우저의 모든 기록(사람·해석·궁합)을 코드 하나로 만들어 다른 기기에 붙여넣습니다. 아티팩트와 웹사이트 사이에도 옮길 수 있습니다.</p>' +
+      '<div class="row-actions" style="margin-top:12px"><button class="btn ghost sm" id="expAll">내보내기 코드 복사</button></div>' +
+      '<div class="share-url hidden" id="expOut"></div>' +
+      '<div class="field-grid" style="margin-top:14px"><div class="f f-12"><label for="impCode">가져오기</label>' +
+      '<input id="impCode" placeholder="다른 기기에서 복사한 코드" autocomplete="off"></div></div>' +
+      '<div class="row-actions"><button class="btn ghost sm" id="impAll">가져와서 합치기</button></div></details>';
+  }
+  function wireCode() {
+    var ex = $('#expAll'), im = $('#impAll');
+    if (ex) ex.onclick = function () {
+      packShare({ v: 1, t: 'all', people: people, solo: soloStore, match: matchStore }).then(function (code) {
+        var out = $('#expOut'); out.classList.remove('hidden'); out.textContent = code;
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(
+          function () { toast('내보내기 코드를 복사했습니다 (' + Math.round(code.length / 1024 * 10) / 10 + 'KB)'); },
+          function () { toast('아래 상자에서 직접 복사하세요'); });
+      }).catch(function () { toast('코드를 만들지 못했습니다'); });
+    };
+    if (im) im.onclick = function () {
+      var raw = $('#impCode').value.trim(); if (!raw) return;
+      unpackShare(raw.replace(/[\s"']/g, '')).then(function (d) {
+        if (!d || d.t !== 'all') throw new Error('not all');
+        var n = mergeData({ people: d.people, solo: d.solo, match: d.match }, true);
+        save(K.people, people); save(K.solo, soloStore); save(K.match, matchStore);
+        toast(n + '명을 합쳤습니다'); render();
+      }).catch(function () { toast('코드가 깨졌거나 동기화 코드가 아닙니다'); });
+    };
+  }
+  /** 가져온 데이터를 합친다. union=true 면 이름 기준 중복만 빼고 더하고, false 면 원격이 로컬을 대체한다 */
+  function mergeData(d, union) {
+    var added = 0;
+    if (d.people) {
+      if (union) {
+        var keyOf = function (p) { return [p.name, p.y, p.m, p.d, p.hour, p.cal].join('|'); };
+        var have = {}; people.forEach(function (p) { have[keyOf(p)] = 1; });
+        d.people.forEach(function (p) { if (!have[keyOf(p)]) { people.push(p); have[keyOf(p)] = 1; added++; } });
+      } else { people = d.people; }
+    }
+    if (d.solo) soloStore = union ? Object.assign({}, soloStore, d.solo) : d.solo;
+    if (d.match) {
+      if (union) {
+        var ids = {}; matchStore.forEach(function (m) { ids[m.id] = 1; });
+        d.match.forEach(function (m) { if (!ids[m.id]) matchStore.push(m); });
+        matchStore.sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+      } else { matchStore = d.match; }
+    }
+    return added;
+  }
+  /** 서버에서 내려받아 로컬을 맞춘다 (로그인 상태가 기준). 첫 로그인이면 이 기기 데이터를 합칠지 묻는다 */
+  function pullAndMerge(firstLogin) {
+    return Sync.pull().then(function (remote) {
+      if (!remote) return;
+      var remoteEmpty = !(remote.people && remote.people.length) && !(remote.match && remote.match.length);
+      var localHas = people.length || matchStore.length;
+      if (remoteEmpty && localHas) {
+        // 계정이 비어 있고 이 기기에 기록이 있다 → 그대로 올린다
+        return Sync.pushNow(allData()).then(function () { toast('이 기기의 기록을 계정에 올렸습니다'); });
+      }
+      var localOnly = localHas && firstLogin && people.some(function (p) {
+        return !(remote.people || []).some(function (q) { return q.name === p.name && q.y === p.y && q.m === p.m && q.d === p.d; });
+      });
+      if (localOnly && confirm('이 기기에만 있는 기록이 있습니다. 계정 기록과 합칠까요?\n"취소"를 누르면 계정 기록으로 덮어씁니다.')) {
+        mergeData(remote, true);
+        saveLocal(K.people, people); saveLocal(K.solo, soloStore); saveLocal(K.match, matchStore);
+        return Sync.pushNow(allData()).then(function () { toast('합쳐서 올렸습니다'); });
+      }
+      mergeData(remote, false);
+      saveLocal(K.people, people); saveLocal(K.solo, soloStore); saveLocal(K.match, matchStore);
+    }).catch(function (e) { toast('동기화 실패: ' + Sync.errText(e)); });
+  }
+  function updateAcctChip(u) {
+    var chip = $('#acct');
+    if (!chip) {
+      chip = el('<button type="button" class="acct hidden" id="acct" title="계정"></button>');
+      var top = document.querySelector('.top'), th = $('#theme');
+      if (top && th) top.insertBefore(chip, th);
+      chip.onclick = function () {
+        go('home');
+        setTimeout(function () { var s = $('#accsec'); if (s) s.scrollIntoView({ behavior: 'smooth' }); }, 60);
+      };
+    }
+    if (u) { chip.textContent = '☁ ' + Sync.name(); chip.classList.remove('hidden'); }
+    else chip.classList.add('hidden');
+  }
+  function renderAccount() {
+    var body = $('#accbody'), note = $('#accnote');
+    if (!body || !note) return;
+    if (!window.Sync || !Sync.configured()) {
+      note.textContent = (window.claude && window.claude.use) ? '로그인은 웹사이트에서 · 여기서는 코드로 옮기기' : '로그인 서버가 아직 연결되지 않았습니다';
+      body.innerHTML = '<p style="font-size:14px;color:var(--fg-2);margin:0;max-width:64ch">' +
+        ((window.claude && window.claude.use)
+          ? '이 화면(claude.ai)에서는 외부 서버 연결이 막혀 있어 닉네임 로그인을 쓸 수 없습니다. 아래 코드로 웹사이트나 다른 기기에 기록을 옮기세요.'
+          : '닉네임·비밀번호 로그인은 관리자가 <code>config.js</code>에 Firebase 설정을 넣으면 켜집니다. 그 전에는 아래 코드 방식으로 기기 간에 옮길 수 있습니다.') +
+        '</p>' + codeUI();
+      wireCode(); return;
+    }
+    Sync.init().then(function (ok) {
+      if (!ok) {
+        note.textContent = '서버 연결 실패';
+        body.innerHTML = '<div class="alert">동기화 서버에 연결하지 못했습니다. 잠시 뒤 새로 고침하세요.</div>' + codeUI();
+        wireCode(); return;
+      }
+      var u = Sync.user();
+      if (u) {
+        note.textContent = Sync.name() + ' 님 · 로그인됨';
+        body.innerHTML = '<div class="form-card"><p style="margin:0 0 12px;font-size:14.5px;color:var(--fg-2)">이 닉네임으로 로그인한 모든 기기에서 같은 기록을 봅니다. 저장할 때마다 자동으로 올라갑니다.</p>' +
+          '<div class="row-actions" style="margin-top:0"><button class="btn sm" id="syncNow">지금 동기화</button>' +
+          '<button class="btn ghost sm" id="logout">로그아웃</button></div>' +
+          '<div class="mono" id="syncStat" style="margin-top:10px;font-size:12px;color:var(--fg-3)">' +
+          (Sync.lastPullAt() ? '마지막 내려받기 ' + new Date(Sync.lastPullAt()).toLocaleTimeString('ko-KR') : '') + '</div></div>' + codeUI();
+        $('#syncNow').onclick = function () {
+          var b = $('#syncNow'); b.disabled = true;
+          pullAndMerge(false).then(function () { toast('동기화했습니다'); render(); });
+        };
+        $('#logout').onclick = function () {
+          Sync.logout().then(function () { toast('로그아웃했습니다. 이 기기의 기록은 그대로 남습니다.'); render(); });
+        };
+      } else {
+        note.textContent = '로그인하면 다른 기기에서도 기록이 그대로 보입니다';
+        body.innerHTML = '<div class="form-card"><div class="field-grid">' +
+          '<div class="f f-6"><label for="accName">닉네임</label><input id="accName" autocomplete="username" placeholder="다른 사람과 겹치지 않는 이름"></div>' +
+          '<div class="f f-6"><label for="accPw">비밀번호 (6자 이상)</label><input id="accPw" type="password" autocomplete="current-password"></div></div>' +
+          '<div class="row-actions"><button class="btn" id="accLogin">로그인</button><button class="btn ghost" id="accReg">새 계정 만들기</button></div>' +
+          '<div class="alert err hidden" id="accErr"></div>' +
+          '<p style="font-size:13px;color:var(--fg-3);margin:14px 0 0;max-width:64ch">이메일을 받지 않으므로 <b>비밀번호를 잊으면 복구할 수 없습니다.</b> 비밀번호는 서버(Firebase)가 암호화해 보관하며 이 페이지는 저장하지 않습니다.</p>' +
+          '</div>' + codeUI();
+        var errEl = $('#accErr');
+        function showErr(m) { if (m) { errEl.textContent = m; errEl.classList.remove('hidden'); } else errEl.classList.add('hidden'); }
+        function go2(fn) {
+          var name = $('#accName').value, pw = $('#accPw').value;
+          showErr(''); $('#accLogin').disabled = $('#accReg').disabled = true;
+          fn(name, pw).then(function () {
+            return pullAndMerge(true);
+          }).then(function () { toast(Sync.name() + ' 님, 로그인했습니다'); render(); })
+            .catch(function (e) { showErr(Sync.errText(e)); $('#accLogin').disabled = $('#accReg').disabled = false; });
+        }
+        $('#accLogin').onclick = function () { go2(Sync.login); };
+        $('#accReg').onclick = function () { go2(Sync.register); };
+        $('#accPw').onkeydown = function (e) { if (e.key === 'Enter') go2(Sync.login); };
+      }
+      wireCode();
     });
   }
 
@@ -883,13 +1059,15 @@
       '<p class="mono" style="font-size:14px">' + esc(personLabel(person)) +
       ' · ' + R.pillars.map(function (q) { return S.gz(q.s, q.b); }).join(' ') + '</p></div>');
 
-    h.push('<section class="block">' + plateHTML(R) + panelsHTML(R) + '</section>');
+    h.push('<section class="block">' + plateHTML(R) + panelsHTML(R) + GL.sectionHTML() + '</section>');
 
     h.push('<section class="block"><div class="sec-head"><h2>해석</h2>' +
       '<span class="note">총평 · 심리 · 재물 · 금전 · 사업 · 직업 · 인연 · 연애결혼 · 전생 10개 항목</span></div>' +
       '<div class="row-actions" style="margin-top:0">' +
       '<button class="btn" id="gen">' + (hasAll ? '해석 다시 생성' : '해석 생성하기') + '</button>' +
       '<button class="btn ghost" id="share">링크 공유</button>' +
+      '<button class="btn ghost" id="img">이미지 저장</button>' +
+      '<button class="btn ghost" id="pdf">PDF로 저장</button>' +
       (readOnly ? '' : '<button class="btn ghost" id="home">저장된 목록</button>') +
       '</div>' + progressHTML('prog') + '<div id="aistat"></div>' +
       '<div id="sharebox"></div>' +
@@ -907,6 +1085,8 @@
     if (!readOnly) $('#home').onclick = function () { go('home'); };
     $('#gen').onclick = function () { generate(true); };
     $('#share').onclick = function () { shareUI('solo', { person: person, store: store }); };
+    $('#img').onclick = function () { saveImage(function () { return Card.solo(R, person, store); }, 'saju_' + person.name + '.png'); };
+    $('#pdf').onclick = printPDF;
     wireChat('chat', function () { return I.chatSeed(I.brief(R), Object.keys(store).map(function (k) { return store[k]; }).join('\n\n')); });
 
     function generate(force) {
@@ -1068,7 +1248,7 @@
         '<h4>' + nameTag(list[ri], Rs[ri]) + '</h4><div class="rl">' + esc(r.role.name) + ' — ' + esc(r.role.desc) + '</div>' +
         '<div class="meta">' + S.EL_H[r.el] + ' ' + S.EL[r.el] + ' · ' + esc(r.strength) + ' · ' + esc(r.gyeok) + '</div></div>';
     }).join('') + '</div></div>');
-    h.push('</div></section>');
+    h.push('</div>' + GL.sectionHTML() + '</section>');
 
     /* --- 쌍별 --- */
     h.push('<section class="block"><div class="sec-head"><h2>한 쌍씩</h2>' +
@@ -1078,6 +1258,8 @@
       (many ? ' <span class="mono" style="opacity:.7">· 호출 ' + (G.pairs.length * pairBatches.length + I.GROUP_BATCHES.length) + '회</span>' : '') +
       '</button>' +
       '<button class="btn ghost" id="share">링크 공유</button>' +
+      '<button class="btn ghost" id="img">이미지 저장</button>' +
+      '<button class="btn ghost" id="pdf">PDF로 저장</button>' +
       (readOnly ? '' : '<button class="btn ghost" id="savem">기록 저장</button>' +
         '<button class="btn ghost" id="home">처음으로</button>') +
       '</div>' + progressHTML('prog') + '<div id="aistat"></div><div id="sharebox"></div>');
@@ -1134,6 +1316,12 @@
     $('#share').onclick = function () {
       shareUI('match', { list: list, stores: stores, groupStore: groupStore });
     };
+    $('#img').onclick = function () {
+      saveImage(function () {
+        return many ? Card.group(list, Rs, G) : Card.pair(Rs[0], Rs[1], G.pairs[0], list[0], list[1]);
+      }, 'gunghap_' + list.map(function (p) { return p.name; }).join('_').slice(0, 40) + '.png');
+    };
+    $('#pdf').onclick = printPDF;
     app.querySelectorAll('[data-genpair]').forEach(function (b) {
       b.onclick = function () { genPair(b.dataset.genpair, true, true); };
     });
@@ -1478,6 +1666,16 @@
     });
     var brand = document.querySelector('.brand');
     if (brand) brand.onclick = function (e) { e.preventDefault(); go('home'); };
+    // 로그인 서버가 연결돼 있고 이미 로그인된 기기면 먼저 내려받는다
+    if (window.Sync && Sync.configured()) {
+      Sync.onAuth(function (u, info) {
+        if (info && info.error) toast('동기화 실패: ' + info.error);
+        updateAcctChip(u);
+      });
+      Sync.init().then(function (ok) {
+        if (ok && Sync.user()) pullAndMerge(false).then(function () { if (view.name === 'home') render(); });
+      });
+    }
     $('#theme').onclick = function () {
       themeMode = themeMode === 'dark' ? 'light' : (themeMode === 'light' ? 'auto' : 'dark');
       save(K.theme, themeMode);
