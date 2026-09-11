@@ -8,6 +8,11 @@
   var S = global.Saju;
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, Math.round(v))); }
+  // 받침 유무로 조사를 고른다. "편재이다"가 아니라 "편재다"가 맞다.
+  function jong(w) { var c = w.charCodeAt(w.length - 1) - 0xAC00; return c >= 0 && c < 11172 && (c % 28) > 0; }
+  function ida(w) { return w + (jong(w) ? '이다' : '다'); }
+  function ira(w) { return w + (jong(w) ? '이라' : '라'); }
+  function ika(w) { return w + (jong(w) ? '이' : '가'); }
   function spouseGroup(R) { return R.input.gender === 'M' ? '재성' : '관성'; }
   function has(R, n) { return (R.shinsalAll || []).some(function (s) { return s.name === n; }); }
   function god(R, n) {
@@ -124,7 +129,7 @@
     }
     lines.push(EL_PARTNER[el]);
     var dg = R.pillars[2].branchGod;
-    lines.push('일지가 ' + dg + '이라 ' + ({
+    lines.push('일지가 ' + ira(dg) + ' ' + ({
       비견: '나와 비슷한 사람', 겁재: '기가 센 사람', 식신: '먹이고 챙겨 주는 사람', 상관: '재치 있고 말 잘하는 사람',
       편재: '활동적이고 돈 감각 있는 사람', 정재: '성실하고 알뜰한 사람', 편관: '강하게 끌고 가는 사람',
       정관: '바르고 책임감 있는 사람', 편인: '독특하고 속 깊은 사람', 정인: '돌봐 주는 사람'
@@ -367,7 +372,7 @@
       socGods[S.GOD_GROUP[p.branchGod]] = 1;
     });
     var socList = Object.keys(socGods);
-    lines.push('년·월주는 남이 보는 자리다. 여기에 ' + socList.join('·') + '이 앉아 ' + ({
+    lines.push('년·월주는 남이 보는 자리다. 여기에 ' + ika(socList.join('·')) + ' 앉아 ' + ({
       비겁: '자기 이름으로 움직이는 사람', 식상: '말하고 만들어 내는 사람', 재성: '일 벌이고 굴리는 사람',
       관성: '자리와 책임을 지는 사람', 인성: '알고 가르치는 사람'
     })[socList[0]] + '으로 먼저 읽힌다.');
@@ -392,7 +397,7 @@
 
     // 겉과 속의 차이 한 줄
     var inner = R.pillars[2].branchGod;
-    lines.push('밖에서는 ' + g.role + '으로 통하는데, 일지는 ' + inner + '이다. ' +
+    lines.push('밖에서는 ' + g.role + '으로 통하는데, 일지는 ' + ida(inner) + '. ' +
       (GAP_BY_DAYGOD[inner] || '') + ' 이 간극이 오해의 출발점이다.');
 
     return { role: g.role, lines: lines, heard: heard.slice(0, 6), misread: misread };
