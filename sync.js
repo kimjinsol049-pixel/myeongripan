@@ -78,7 +78,11 @@
     'auth/weak-password': '비밀번호는 6자 이상이어야 합니다.',
     'auth/too-many-requests': '시도가 너무 많습니다. 잠시 뒤 다시 하세요.',
     'auth/network-request-failed': '네트워크 오류입니다. 연결을 확인하세요.',
-    'auth/operation-not-allowed': '서버에서 이메일/비밀번호 로그인이 꺼져 있습니다. 관리자 설정이 필요합니다.',
+    'auth/operation-not-allowed': '서버에서 이 로그인 방식이 꺼져 있습니다. 관리자 설정이 필요합니다.',
+    'auth/popup-closed-by-user': '로그인 창을 닫았습니다.',
+    'auth/cancelled-popup-request': '로그인 창을 닫았습니다.',
+    'auth/popup-blocked': '팝업이 막혔습니다. 이 사이트의 팝업을 허용하고 다시 누르세요.',
+    'auth/unauthorized-domain': '이 주소가 Firebase 승인 도메인 목록에 없습니다. 관리자 설정이 필요합니다.',
     'permission-denied': '서버 권한 규칙이 막았습니다. Firestore 규칙을 확인하세요.'
   };
   function errText(e) {
@@ -105,6 +109,23 @@
     return pseudoEmail(name).then(function (email) {
       return auth.signInWithEmailAndPassword(email, pw);
     }).then(function (cred) { return cred.user; });
+  }
+  /** Google 계정으로 로그인. 모바일은 팝업이 막히는 일이 많아 리다이렉트로 간다 */
+  function loginGoogle() {
+    var fb = global.firebase;
+    var provider = new fb.auth.GoogleAuthProvider();
+    var mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    var p = mobile
+      ? auth.signInWithRedirect(provider).then(function () { return null; })
+      : auth.signInWithPopup(provider);
+    return p.then(function (cred) {
+      var u = cred ? cred.user : auth.currentUser;
+      if (!u) return null;
+      return db.doc('users/' + u.uid + '/data/profile').set({
+        name: u.displayName || 'Google 사용자', provider: 'google',
+        updatedAt: fb.firestore.FieldValue.serverTimestamp()
+      }, { merge: true }).then(function () { return u; });
+    });
   }
   function logout() { return auth ? auth.signOut() : Promise.resolve(); }
 
@@ -155,7 +176,7 @@
     configured: configured, init: init, onAuth: onAuth,
     user: function () { return user; },
     name: function () { return user ? (user.displayName || '사용자') : ''; },
-    register: register, login: login, logout: logout,
+    register: register, login: login, loginGoogle: loginGoogle, logout: logout,
     pull: pull, pushNow: pushNow, schedulePush: schedulePush,
     errText: errText,
     lastPushAt: function () { return lastPushAt; }, lastPullAt: function () { return lastPullAt; }

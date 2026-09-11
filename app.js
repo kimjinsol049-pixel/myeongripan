@@ -837,7 +837,11 @@
         };
       } else {
         note.textContent = '로그인하면 다른 기기에서도 기록이 그대로 보입니다';
-        body.innerHTML = '<div class="form-card"><div class="field-grid">' +
+        body.innerHTML = '<div class="form-card">' +
+          '<div class="row-actions" style="margin-top:0"><button class="btn" id="accGoogle">Google 계정으로 로그인</button>' +
+          '<span style="font-size:13px;color:var(--fg-3)">가장 간단합니다. 비밀번호를 따로 만들지 않습니다.</span></div>' +
+          '<div style="display:flex;align-items:center;gap:12px;margin:18px 0 14px;color:var(--fg-3);font-size:12.5px"><span style="flex:1;height:1px;background:var(--line)"></span>또는 닉네임으로<span style="flex:1;height:1px;background:var(--line)"></span></div>' +
+          '<div class="field-grid">' +
           '<div class="f f-6"><label for="accName">닉네임</label><input id="accName" autocomplete="username" placeholder="다른 사람과 겹치지 않는 이름"></div>' +
           '<div class="f f-6"><label for="accPw">비밀번호 (6자 이상)</label><input id="accPw" type="password" autocomplete="current-password"></div></div>' +
           '<div class="row-actions"><button class="btn" id="accLogin">로그인</button><button class="btn ghost" id="accReg">새 계정 만들기</button></div>' +
@@ -856,6 +860,7 @@
         }
         $('#accLogin').onclick = function () { go2(Sync.login); };
         $('#accReg').onclick = function () { go2(Sync.register); };
+        $('#accGoogle').onclick = function () { go2(function () { return Sync.loginGoogle(); }); };
         $('#accPw').onkeydown = function (e) { if (e.key === 'Enter') go2(Sync.login); };
       }
       wireCode();
@@ -872,29 +877,55 @@
           '허용하면 이후로는 바로 씁니다. 해석 비용은 보는 사람의 Claude 사용량에서 나갑니다.</p>';
         return;
       }
-      prov.textContent = p === 'apikey' ? 'API 키 연결됨 · ' + AIP.getModel() : '꺼져 있음 — 계산 결과와 핵심 판정만 표시됩니다';
+      var cur = AIP.getProvider();
+      var PV = AIP.PROVIDERS.filter(function (x) { return x.id === cur; })[0] || AIP.PROVIDERS[0];
+      prov.textContent = p === 'apikey' ? '연결됨 · ' + AIP.describe() : '꺼져 있음 — 계산 결과와 핵심 판정만 표시됩니다';
       body.innerHTML =
-        '<div class="form-card"><div class="field-grid">' +
-        '<div class="f f-12"><label for="aikey">Anthropic API 키</label>' +
-        '<input id="aikey" type="password" autocomplete="off" placeholder="sk-ant-…" value="' + esc(AIP.getKey()) + '"></div>' +
-        '<div class="f f-12"><label for="aimodel">모델</label><select id="aimodel">' +
-        AIP.MODELS.map(function (m) {
-          return '<option value="' + m.id + '"' + (m.id === AIP.getModel() ? ' selected' : '') + '>' + esc(m.label) + ' — ' + esc(m.note) + '</option>';
-        }).join('') + '</select></div></div>' +
+        '<div class="form-card">' +
+        '<div class="seg" id="provseg" style="flex-wrap:wrap">' + AIP.PROVIDERS.map(function (x) {
+          return '<button type="button" data-v="' + x.id + '" aria-pressed="' + (x.id === cur) + '" style="flex:1 1 45%">' +
+            esc(x.label) + ' <small style="opacity:.75">' + esc(x.vendor) + (x.free ? ' · 무료 가능' : '') + '</small></button>';
+        }).join('') + '</div>' +
+        '<p class="gnote">' + esc(PV.note) + ' <a href="' + PV.keyUrl + '" target="_blank" rel="noopener">키 만들기 ↗</a></p>' +
+        '<div class="field-grid" style="margin-top:14px">' +
+        '<div class="f f-12"><label for="aikey">' + esc(PV.label) + ' API 키</label>' +
+        '<input id="aikey" type="password" autocomplete="off" placeholder="키 붙여넣기" value="' + esc(AIP.getKey(cur)) + '"></div>' +
+        '<div class="f f-12"><label for="aimodel">모델 · <button type="button" id="aireload" style="background:none;border:0;padding:0;color:var(--gold);cursor:pointer;font:inherit;text-transform:none;letter-spacing:0">목록 새로 고침</button></label>' +
+        '<select id="aimodel">' + modelOptions(AIP.cachedModels(cur), AIP.getModel(cur)) + '</select></div></div>' +
         '<div class="row-actions"><button class="btn" id="aisave">저장</button>' +
-        (AIP.getKey() ? '<button class="btn danger" id="aiclear">키 지우기</button>' : '') + '</div>' +
+        (AIP.getKey(cur) ? '<button class="btn danger" id="aiclear">키 지우기</button>' : '') + '</div>' +
         '<p style="font-size:13px;color:var(--fg-3);margin:14px 0 0;max-width:64ch">키는 이 브라우저에만 저장되고 서버로 가지 않습니다. ' +
-        '이 페이지에서 Anthropic API로 직접 호출하며, 비용은 키 소유자에게 청구됩니다. 공유 링크에는 키가 절대 들어가지 않습니다. ' +
-        '키는 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>에서 만듭니다.</p></div>';
+        '이 페이지에서 해당 회사 API로 직접 호출하며, 비용과 한도는 키 소유자 계정 기준입니다. 공유 링크에는 키가 절대 들어가지 않습니다.</p></div>';
+      $('#provseg').onclick = function (e) {
+        var b = e.target.closest('button[data-v]'); if (!b) return;
+        AIP.setProvider(b.dataset.v); renderAISettings();
+      };
       $('#aisave').onclick = function () {
-        AIP.setKey($('#aikey').value);
-        AIP.setModel($('#aimodel').value);
-        toast(AIP.getKey() ? 'AI 해석을 켰습니다' : '키가 비어 있어 AI 해석은 꺼진 상태입니다');
+        AIP.setKey(cur, $('#aikey').value);
+        AIP.setModel(cur, $('#aimodel').value);
+        toast(AIP.getKey(cur) ? 'AI 해석을 켰습니다 · ' + AIP.describe() : '키가 비어 있어 AI 해석은 꺼진 상태입니다');
         renderAISettings();
       };
       var clr = $('#aiclear');
-      if (clr) clr.onclick = function () { AIP.setKey(''); toast('키를 지웠습니다'); renderAISettings(); };
+      if (clr) clr.onclick = function () { AIP.setKey(cur, ''); toast('키를 지웠습니다'); renderAISettings(); };
+      $('#aireload').onclick = function () {
+        var k = $('#aikey').value.trim();
+        if (k) AIP.setKey(cur, k);
+        if (!AIP.getKey(cur) && cur !== 'openrouter') { toast('먼저 키를 넣으세요. 목록은 키로 조회합니다.'); return; }
+        var sel = $('#aimodel'); sel.disabled = true; toast('모델 목록을 불러오는 중…');
+        AIP.listModels(cur, true).then(function (list) {
+          sel.innerHTML = modelOptions(list, sel.value); sel.disabled = false;
+          toast(list.length + '개 모델을 불러왔습니다' + (list.some(function (m) { return m.free; }) ? ' · 무료 모델 포함' : ''));
+        }).catch(function (e) { sel.disabled = false; toast('목록을 못 불러왔습니다: ' + errCopy(e)); });
+      };
     });
+  }
+  function modelOptions(models, cur) {
+    var has = models.some(function (m) { return m.id === cur; });
+    var list = has ? models : [{ id: cur, label: cur }].concat(models);
+    return list.map(function (m) {
+      return '<option value="' + esc(m.id) + '"' + (m.id === cur ? ' selected' : '') + '>' + esc(m.label || m.id) + (m.free ? ' · 무료' : '') + '</option>';
+    }).join('');
   }
 
   /* ============================================================
