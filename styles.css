@@ -340,6 +340,33 @@ details.adv .field-grid { margin-top: 14px; }
 .chip.gold { border-color: var(--gold-soft); color: var(--gold); }
 .chip .p { font-family: var(--mono); font-size: 11px; color: var(--fg-3); margin-right: 5px; }
 .ss-lab { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 5px; }
+button.chip.ss { cursor: pointer; font-family: var(--sans); }
+button.chip.ss:hover { filter: brightness(1.25); }
+button.chip.ss[aria-pressed="true"] { background: currentColor; }
+button.chip.ss[aria-pressed="true"], button.chip.ss[aria-pressed="true"] .p { color: var(--bg); }
+button.chip.ss.good[aria-pressed="true"] { background: var(--good); border-color: var(--good); }
+button.chip.ss.gold[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); }
+button.chip.ss.bad[aria-pressed="true"] { background: var(--bad); border-color: var(--bad); }
+
+.ss-detail {
+  margin-top: 14px; border: 1px solid var(--line); border-left-width: 3px; border-radius: 5px;
+  padding: 13px 15px; background: var(--bg-3);
+}
+.ss-detail.good { border-left-color: var(--good); }
+.ss-detail.gold { border-left-color: var(--gold); }
+.ss-detail.bad { border-left-color: var(--bad); }
+.ss-detail .ss-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 7px; }
+.ss-detail .ss-head b { font-family: var(--serif); font-size: 18px; font-weight: 700; }
+.ss-detail.good .ss-head b { color: var(--good); }
+.ss-detail.gold .ss-head b { color: var(--gold); }
+.ss-detail.bad .ss-head b { color: var(--bad); }
+.ss-detail .ss-head .mono { font-family: var(--mono); font-size: 11.5px; color: var(--fg-3); }
+.ss-detail .ss-x {
+  margin-left: auto; background: none; border: 0; color: var(--fg-3); cursor: pointer;
+  font-size: 18px; line-height: 1; padding: 0 2px;
+}
+.ss-detail .ss-x:hover { color: var(--fg); }
+.ss-detail p { margin: 0; font-size: 14.5px; color: var(--fg-2); max-width: 66ch; }
 
 /* 대운 */
 .daewoon { display: flex; gap: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }

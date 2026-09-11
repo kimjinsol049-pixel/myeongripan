@@ -382,22 +382,24 @@
     h.push('<div class="panels" style="margin-top:22px">');
     var SS = R.shinsalAll || [];
     var byKind = { 길: [], 중: [], 흉: [] };
-    SS.forEach(function (s) { (byKind[s.kind] || byKind['중']).push(s); });
+    SS.forEach(function (s, i) { s._i = i; (byKind[s.kind] || byKind['중']).push(s); });
     function ssChips(list, cls) {
       if (!list.length) return '<span class="chip">없음</span>';
       return list.map(function (s) {
-        return '<span class="chip ' + cls + '" title="' + esc(s.name + (s.where.length ? ' (' + s.where.join(', ') + ')' : '') + ' — ' + s.desc) + '">' +
-          esc(s.name) + (s.where.length ? '<span class="p" style="margin:0 0 0 5px">' + esc(s.where[0]) + '</span>' : '') + '</span>';
+        return '<button type="button" class="chip ss ' + cls + '" data-ss="' + s._i + '" aria-pressed="false">' +
+          esc(s.name) + (s.where.length ? '<span class="p" style="margin:0 0 0 5px">' + esc(s.where[0]) + '</span>' : '') + '</button>';
       }).join('');
     }
     h.push('<div class="panel" style="grid-column:1/-1"><h3>' + GL.term('신살') + ' · 길성 ' + byKind['길'].length +
-      ' / 중립 ' + byKind['중'].length + ' / 흉살 ' + byKind['흉'].length + '</h3>' +
+      ' / 중립 ' + byKind['중'].length + ' / 흉살 ' + byKind['흉'].length +
+      ' <span style="text-transform:none;letter-spacing:0;color:var(--gold)">— 눌러서 뜻 보기</span></h3>' +
       '<div style="display:grid;gap:10px">' +
       '<div><div class="ss-lab" style="color:var(--good)">길성 — 도움이 되는 별</div><div class="chips">' + ssChips(byKind['길'], 'good') + '</div></div>' +
       '<div><div class="ss-lab" style="color:var(--gold)">중립 — 쓰기 나름</div><div class="chips">' + ssChips(byKind['중'], 'gold') + '</div></div>' +
       '<div><div class="ss-lab" style="color:var(--bad)">흉살 — 조심할 별</div><div class="chips">' + ssChips(byKind['흉'], 'bad') + '</div></div>' +
       '</div>' +
-      (SS.length ? '<details class="adv" style="margin-top:14px"><summary>신살 뜻 풀이 (' + SS.length + '개)</summary>' +
+      '<div class="ss-detail" id="ssDetail" hidden></div>' +
+      (SS.length ? '<details class="adv" style="margin-top:14px"><summary>한꺼번에 모두 보기 (' + SS.length + '개)</summary>' +
         '<dl class="gl" style="margin-top:12px">' + SS.map(function (s) {
           return '<dt style="color:var(--' + ({ 길: 'good', 중: 'gold', 흉: 'bad' })[s.kind] + ')">' + esc(s.name) +
             (s.where.length ? ' <span class="mono" style="color:var(--fg-3);font-size:11px">' + esc(s.where.join(', ')) + '</span>' : '') +
@@ -426,6 +428,36 @@
         '분. 이 계산은 천문 근사식을 쓰므로 경계 30분 이내 출생은 월주가 한 칸 달라질 수 있습니다. 만세력 원본을 한 번 더 확인하세요.</div>');
     }
     return h.join('');
+  }
+
+  /** 신살 칩을 누르면 아래에 뜻이 펼쳐진다 (모바일에는 마우스 오버가 없으므로) */
+  function wireShinsal(R) {
+    var box = $('#ssDetail');
+    if (!box) return;
+    var SS = R.shinsalAll || [];
+    var KIND = { 길: { cls: 'good', label: '길성 — 도움이 되는 별' }, 중: { cls: 'gold', label: '중립 — 쓰기 나름' }, 흉: { cls: 'bad', label: '흉살 — 조심할 별' } };
+    app.querySelectorAll('[data-ss]').forEach(function (b) {
+      b.onclick = function () {
+        var s = SS[+b.dataset.ss];
+        if (!s) return;
+        var wasOn = b.getAttribute('aria-pressed') === 'true';
+        app.querySelectorAll('[data-ss]').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+        if (wasOn) { box.hidden = true; return; }
+        b.setAttribute('aria-pressed', 'true');
+        var k = KIND[s.kind] || KIND['중'];
+        box.hidden = false;
+        box.className = 'ss-detail ' + k.cls;
+        box.innerHTML =
+          '<div class="ss-head"><b>' + esc(s.name) + '</b>' +
+          '<span class="mono">' + esc(k.label) + (s.where.length ? ' · ' + esc(s.where.join(', ')) : '') + '</span>' +
+          '<button type="button" class="ss-x" aria-label="닫기">×</button></div>' +
+          '<p>' + esc(s.desc) + '</p>';
+        $('.ss-x', box).onclick = function () {
+          box.hidden = true;
+          b.setAttribute('aria-pressed', 'false');
+        };
+      };
+    });
   }
 
   /* ---------- 해석 섹션 렌더 ---------- */
@@ -1203,6 +1235,7 @@
 
     app.innerHTML = h.join('');
 
+    wireShinsal(R);
     if (!readOnly) $('#home').onclick = function () { go('home'); };
     $('#gen').onclick = function () { generate(true); };
     $('#share').onclick = function () { shareUI('solo', { person: person, store: store }); };
