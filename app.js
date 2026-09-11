@@ -257,8 +257,9 @@
     });
   }
   function personLabel(p) {
+    // 시각을 모르면 시간 자리를 비운다. 표시는 따로 붙는 "시각모름" 배지가 맡는다.
     return p.y + '.' + pad(p.m) + '.' + pad(p.d) + (p.cal === 'lunar' ? ' 음' + (p.leap ? '(윤)' : '') : ' 양') +
-      ' ' + (p.unknown ? '시각모름' : pad(p.hour) + ':' + pad(p.minute || 0)) +
+      (p.unknown ? '' : ' ' + pad(p.hour) + ':' + pad(p.minute || 0)) +
       ' · ' + (p.gender === 'M' ? '남' : '여');
   }
 
@@ -1230,7 +1231,9 @@
     h.push('<div class="hero" style="padding:34px 0 24px"><div class="eyebrow">사주 원국</div>' +
       '<h1 style="font-size:clamp(26px,4vw,38px)">' + nameTag(person, R) + '</h1>' +
       '<p class="mono" style="font-size:14px">' + esc(personLabel(person)) +
-      ' · ' + R.pillars.map(function (q) { return S.gz(q.s, q.b); }).join(' ') + '</p></div>');
+      (R.unknownTime ? ' <span class="notime">시각모름</span>' : '') +
+      ' · ' + R.active.map(function (q) { return S.gz(q.s, q.b); }).join(' ') +
+      (R.unknownTime ? ' <span style="color:var(--fg-3)">+ 시주 없음</span>' : '') + '</p></div>');
 
     h.push('<section class="block">' +
       (R.unknownTime ? unknownTimeNote(null) : '') +
