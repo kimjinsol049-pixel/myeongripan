@@ -340,6 +340,17 @@
     if (/404|NOT_FOUND|not found/i.test(msg)) return { code: 'invalid_request', message: '이 모델은 쓸 수 없습니다. 다른 모델을 고르세요.' };
     return { code: 'upstream_error', message: msg.slice(0, 160), text: text || undefined };
   }
+  /* 무료 등급은 모델당 분당 20회다. 요청 사이에 최소 간격을 두어 한도에 아예 닿지 않게 한다.
+     (분당 약 17회 페이스. 여러 배치를 연속으로 돌려도 429 가 나지 않는다.) */
+  var MIN_GAP_MS = 3500, nextSlot = 0;
+  function pace() {
+    var now = Date.now();
+    var at = Math.max(now, nextSlot);
+    nextSlot = at + MIN_GAP_MS;
+    var wait = at - now;
+    return wait > 0 ? new Promise(function (ok) { setTimeout(ok, wait); }) : Promise.resolve();
+  }
+
   /** 429 응답에 담긴 "Please retry in 4.09s" 를 밀리초로 읽는다 */
   function retryAfterMs(e) {
     var m = String((e && (e.message || e)) || '').match(/retry in ([\d.]+)s/i);
@@ -357,7 +368,8 @@
       if (opts.signal.aborted) return Promise.reject({ code: 'cancelled', message: 'cancelled' });
       opts.signal.addEventListener('abort', function () { stopped = true; });
     }
-    return getFbAI().then(function (h) {
+    return pace().then(getFbAI).then(function (h) {
+      if (stopped) throw { code: 'cancelled', message: 'cancelled' };
       var gm = h.mod.getGenerativeModel(h.ai, {
         model: getModel('firebase'),
         generationConfig: { maxOutputTokens: 24000, temperature: 0.9 }
@@ -378,8 +390,9 @@
     }).catch(function (e) {
       var err = mapFbErr(e, text);
       // 무료 한도는 분당 제한이고 서버가 대기 시간을 알려준다. 아직 글이 안 나왔으면 기다렸다 다시 건다.
-      if (err.code === 'rate_limited' && !text && !stopped && attempt < 3) {
+      if (err.code === 'rate_limited' && !text && !stopped && attempt < 4) {
         var wait = retryAfterMs(e);
+        nextSlot = Date.now() + wait; // 대기 중에는 다른 호출도 나가지 않게 슬롯을 밀어 둔다
         if (opts.onNotice) { try { opts.onNotice('무료 한도에 걸려 ' + Math.round(wait / 1000) + '초 기다립니다'); } catch (x) { } }
         return new Promise(function (ok) { setTimeout(ok, wait); }).then(function () {
           if (stopped) throw { code: 'cancelled', message: 'cancelled' };
