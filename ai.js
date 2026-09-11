@@ -25,9 +25,9 @@
       ]
     },
     {
-      id: 'anthropic', label: 'Claude', vendor: 'Anthropic', free: false,
+      id: 'anthropic', label: 'Claude', vendor: '내 키 · 유료', free: false,
       keyUrl: 'https://console.anthropic.com/settings/keys',
-      note: 'Anthropic API 키는 유료(선불 크레딧)입니다. Claude를 무료로 쓰려면 claude.ai 아티팩트 버전에서 보세요 — 거기서는 보는 사람의 Claude 계정으로 키 없이 씁니다.',
+      note: 'Anthropic API 키는 선불 크레딧을 충전해야 하며 무료 등급이 없습니다. Claude를 무료로 쓰는 방법은 위의 안내를 보세요.',
       defaults: [
         { id: 'claude-opus-5', label: 'Claude Opus 5 — 가장 깊게 씀' },
         { id: 'claude-sonnet-5', label: 'Claude Sonnet 5 — 빠르고 저렴' },
@@ -46,9 +46,9 @@
       ]
     },
     {
-      id: 'openai', label: 'ChatGPT', vendor: 'OpenAI', free: false,
+      id: 'openai', label: 'ChatGPT', vendor: '내 키 · 유료', free: false,
       keyUrl: 'https://platform.openai.com/api-keys',
-      note: 'OpenAI API 키는 유료(선불 크레딧)입니다. ChatGPT 구독과는 별개로 API 결제가 필요합니다.',
+      note: 'OpenAI API 키는 선불 크레딧이 필요하며 무료 등급이 없습니다. ChatGPT Plus 구독과 API 결제는 별개입니다. 돈 안 들이고 쓰려면 아래 OpenRouter의 무료 모델을 쓰세요.',
       defaults: [
         { id: 'gpt-5', label: 'GPT-5 — 가장 깊게' },
         { id: 'gpt-5-mini', label: 'GPT-5 mini — 균형' },
@@ -57,13 +57,14 @@
       ]
     },
     {
-      id: 'openrouter', label: 'OpenRouter', vendor: '여러 회사 모델', free: true,
+      id: 'openrouter', label: 'OpenRouter', vendor: '무료 모델 다수', free: true,
       keyUrl: 'https://openrouter.ai/keys',
-      note: '한 키로 여러 회사 모델을 씁니다. 이름 끝에 :free 가 붙은 모델은 무료(속도·한도 제한 있음). 무료 가입 뒤 키를 발급받고 "목록 새로 고침"을 누르면 지금 무료인 모델이 위쪽에 뜹니다.',
+      note: '무료 가입만 하면 결제 없이 키가 나오고, 이름 끝에 :free 가 붙은 모델은 돈이 들지 않습니다. 키를 넣고 "목록 새로 고침"을 누르면 지금 무료인 모델이 위쪽에 뜹니다. 다만 OpenAI(GPT)와 Anthropic(Claude) 모델은 여기서도 전부 유료입니다.',
       defaults: [
-        { id: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite (OpenRouter)' },
-        { id: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B — 무료', free: true },
-        { id: 'deepseek/deepseek-chat-v3-0324:free', label: 'DeepSeek V3 — 무료', free: true }
+        { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', label: 'Nemotron 3 Ultra 550B — 무료, 가장 큼', free: true },
+        { id: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B — 무료', free: true },
+        { id: 'nvidia/nemotron-3-super-120b-a12b:free', label: 'Nemotron 3 Super 120B — 무료', free: true },
+        { id: 'thinkingmachines/inkling:free', label: 'Inkling — 무료', free: true }
       ]
     }
   ];

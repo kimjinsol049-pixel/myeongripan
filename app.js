@@ -194,6 +194,8 @@
 
   /* ---------- 해석 공급자 (ai.js) · 규칙 판정 (rules.js) ---------- */
   var AIP = window.AI, RU = window.Rules, GL = window.Glossary, Card = window.Card;
+  // claude.ai 에 올린 같은 앱. 거기서는 보는 사람의 Claude 계정으로 키 없이 해석이 나온다.
+  var CLAUDE_URL = 'https://claude.ai/code/artifact/a6721853-107e-483a-b278-ca8d9cf8faa6';
   var ERRCOPY = {
     not_granted: 'AI 해석이 꺼져 있습니다. 첫 화면의 "AI 해석 설정"에서 켜면 각 항목을 길게 씁니다.',
     bad_key: 'API 키가 틀렸거나 만료됐습니다. 첫 화면의 "AI 해석 설정"에서 다시 넣으세요.',
@@ -888,9 +890,21 @@
       var all = AIP.PROVIDERS.filter(function (x) { return x.id !== 'firebase' || AIP.firebaseAvailable(); });
       var PV = all.filter(function (x) { return x.id === cur; })[0] || all[0];
       var keyless = !!PV.keyless;
+      var freeGuide =
+        '<div class="banner" style="display:block;margin:0 0 16px">' +
+        '<b>돈 안 내고 쓰는 방법</b>' +
+        '<div style="font-size:13.5px;color:var(--fg-2);margin-top:8px;line-height:1.7">' +
+        '· <b>Gemini</b> — 지금 이 화면 기본값. 아무것도 등록할 필요 없습니다.<br>' +
+        '· <b>Claude</b> — 아래 “Claude로 보기”를 누르면 <b>본인 Claude 계정</b>으로 키 없이 해석이 나옵니다. 무료 계정도 됩니다.<br>' +
+        '· <b>ChatGPT</b> — OpenAI는 무료 API가 없습니다. 대신 <b>OpenRouter</b>에 무료 가입하면 결제 없이 큰 모델들을 쓸 수 있습니다.' +
+        '</div>' +
+        '<div class="row-actions" style="margin-top:12px">' +
+        '<a class="btn sm" href="' + CLAUDE_URL + '" target="_blank" rel="noopener" style="text-decoration:none">Claude로 보기 ↗</a>' +
+        '<button type="button" class="btn ghost sm" id="pickOR">OpenRouter 무료 모델 쓰기</button>' +
+        '</div></div>';
       prov.textContent = keyless ? '켜져 있음 · ' + AIP.describe() + ' · 설정 불필요'
         : (p === 'apikey' ? '켜져 있음 · ' + AIP.describe() : '꺼져 있음 — 계산 결과와 핵심 판정만 표시됩니다');
-      body.innerHTML =
+      body.innerHTML = freeGuide +
         '<div class="form-card">' +
         '<div class="seg" id="provseg" style="flex-wrap:wrap">' + all.map(function (x) {
           return '<button type="button" data-v="' + x.id + '" aria-pressed="' + (x.id === cur) + '" style="flex:1 1 45%">' +
@@ -915,6 +929,11 @@
       $('#provseg').onclick = function (e) {
         var b = e.target.closest('button[data-v]'); if (!b) return;
         AIP.setProvider(b.dataset.v); renderAISettings();
+      };
+      var orBtn = $('#pickOR');
+      if (orBtn) orBtn.onclick = function () {
+        AIP.setProvider('openrouter'); renderAISettings();
+        setTimeout(function () { var k = $('#aikey'); if (k) k.focus(); }, 60);
       };
       $('#aisave').onclick = function () {
         if (!keyless) AIP.setKey(cur, $('#aikey').value);
