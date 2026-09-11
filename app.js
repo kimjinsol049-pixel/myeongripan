@@ -201,7 +201,7 @@
     not_declared: 'AI 해석 기능이 이 페이지에 없습니다.',
     capability_disabled: '이 화면에서는 AI 해석을 쓸 수 없습니다.',
     capability_removed: '이 화면에서는 AI 해석을 쓸 수 없습니다.',
-    rate_limited: '요청이 몰렸습니다. 1~2분 뒤 다시 눌러주세요.',
+    rate_limited: '무료 사용 한도(분당 요청 수)에 걸렸습니다. 1~2분 뒤 다시 눌러주세요. 자주 그러면 "AI 해석 설정"에서 내 키를 넣어 쓰면 됩니다.',
     session_expired: '다시 로그인한 뒤 시도하세요.',
     refused: '이 내용은 생성할 수 없습니다. 항목을 바꿔서 다시 시도하세요.',
     empty_completion: '답이 비어 돌아왔습니다. 다시 눌러주세요.',
@@ -483,6 +483,10 @@
             tier: opts.tier || 'default',
             signal: ctl.signal,
             refresh: !!opts.refresh,
+            onNotice: function (msg) {
+              setProg(msg || ('생성 중 ' + (bi + 1) + '/' + total + ' — ' + titles), done / total);
+              if (msg) Loader.batchStart(msg);
+            },
             onText: function (u) {
               var map = distribute(u.text, defs);
               defs.forEach(function (d) {

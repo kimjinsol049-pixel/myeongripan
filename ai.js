@@ -340,7 +340,15 @@
     if (/404|NOT_FOUND|not found/i.test(msg)) return { code: 'invalid_request', message: '이 모델은 쓸 수 없습니다. 다른 모델을 고르세요.' };
     return { code: 'upstream_error', message: msg.slice(0, 160), text: text || undefined };
   }
-  function viaFirebase(input, opts) {
+  /** 429 응답에 담긴 "Please retry in 4.09s" 를 밀리초로 읽는다 */
+  function retryAfterMs(e) {
+    var m = String((e && (e.message || e)) || '').match(/retry in ([\d.]+)s/i);
+    var s = m ? parseFloat(m[1]) : NaN;
+    if (!isFinite(s)) return 12000;
+    return Math.min(45000, Math.max(2000, Math.ceil(s * 1000) + 1500));
+  }
+  function viaFirebase(input, opts, attempt) {
+    attempt = attempt || 0;
     var contents = toMessages(input).map(function (m) {
       return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] };
     });
@@ -367,7 +375,20 @@
       }
       if (!text.trim()) throw { code: 'empty_completion', message: 'empty' };
       return { text: text, truncated: false, modelTierApplied: 'default' };
-    }).catch(function (e) { throw mapFbErr(e, text); });
+    }).catch(function (e) {
+      var err = mapFbErr(e, text);
+      // 무료 한도는 분당 제한이고 서버가 대기 시간을 알려준다. 아직 글이 안 나왔으면 기다렸다 다시 건다.
+      if (err.code === 'rate_limited' && !text && !stopped && attempt < 3) {
+        var wait = retryAfterMs(e);
+        if (opts.onNotice) { try { opts.onNotice('무료 한도에 걸려 ' + Math.round(wait / 1000) + '초 기다립니다'); } catch (x) { } }
+        return new Promise(function (ok) { setTimeout(ok, wait); }).then(function () {
+          if (stopped) throw { code: 'cancelled', message: 'cancelled' };
+          if (opts.onNotice) { try { opts.onNotice(''); } catch (x) { } }
+          return viaFirebase(input, opts, attempt + 1);
+        });
+      }
+      throw err;
+    });
   }
 
   /* ---------- 공개 인터페이스 ---------- */
