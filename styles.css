@@ -612,6 +612,26 @@ body.locked { overflow: hidden; }
   font-size: 14px; font-weight: 500; z-index: 100; box-shadow: var(--shadow);
 }
 
+/* ===== 재미로 보는 순위 ===== */
+.fun-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.fun-card { border: 1px solid var(--line); border-radius: 6px; background: var(--bg-2); padding: 15px 16px; }
+.fun-card h4 { font-size: 15.5px; margin-bottom: 11px; color: var(--gold); }
+.fun-rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.fun-rank li {
+  display: grid; grid-template-columns: 26px 1fr auto; grid-template-areas: "pl nm v" ". sb sb";
+  gap: 2px 8px; align-items: baseline;
+}
+.fun-rank li.top { background: color-mix(in srgb, var(--gold) 9%, transparent); border-radius: 4px; padding: 5px 6px; margin: -5px -6px; }
+.fun-rank .pl { grid-area: pl; font-size: 15px; text-align: center; color: var(--fg-3); font-family: var(--mono); }
+.fun-rank .nm { grid-area: nm; font-weight: 500; font-size: 14.5px; }
+.fun-rank .v { grid-area: v; font-family: var(--mono); font-size: 14px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.fun-rank .sb { grid-area: sb; font-size: 12px; color: var(--fg-3); }
+.fun-person { border-top: 1px solid var(--line-soft); padding-top: 14px; margin-top: 14px; }
+.fun-person:first-of-type { border-top: 0; padding-top: 4px; margin-top: 10px; }
+.fun-person h4 { font-size: 17px; margin-bottom: 9px; }
+.fun-person .fw { font-size: 12.5px; color: var(--fg-3); margin-top: 3px; line-height: 1.55; }
+.fun-note { font-size: 13px; color: var(--fg-3); margin: 18px 0 0; max-width: 74ch; line-height: 1.7; }
+
 /* ===== 출생 시각 모름 경고 ===== */
 .warn-box {
   border: 1px solid color-mix(in srgb, var(--warn) 50%, var(--line));

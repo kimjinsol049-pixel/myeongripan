@@ -1440,6 +1440,9 @@
     }).join('') + '</div></div>');
     h.push('</div>' + GL.sectionHTML() + '</section>');
 
+    /* --- 재미로 보는 순위 --- */
+    h.push(fortuneHTML(list, Rs));
+
     /* --- 쌍별 --- */
     h.push('<section class="block"><div class="sec-head"><h2>한 쌍씩</h2>' +
       '<span class="note">' + G.pairs.length + '개 쌍</span></div>' +
@@ -1516,11 +1519,12 @@
       '이 중에 누가 제일 위험한 조합입니까?',
       '팀 리더는 누가 맞습니까?',
       '연인으로 묶으면 1순위는 누구입니까?',
+      '누가 가장 먼저 결혼합니까?',
       '이 조합이 깨진다면 언제입니까?'
     ] : [
       '이 관계 계속 가도 됩니까?',
       '싸움이 나면 누가 먼저 굽혀야 합니까?',
-      '결혼까지 갈 수 있습니까?',
+      '결혼한다면 언제가 좋습니까?',
       '같이 돈을 굴려도 됩니까?'
     ]) + '</section>');
 
@@ -1600,7 +1604,7 @@
     }
 
     var ctxText = G.pairs.map(function (c) { return I.pairBrief(Rs[c.i], Rs[c.j], c); }).join('\n\n') +
-      (many ? '\n\n' + I.groupBrief(Rs, G) : '');
+      '\n\n' + I.groupBrief(Rs, G);
     wireChat('chat', function () {
       var gen = [];
       Object.keys(stores).forEach(function (k) {
@@ -1717,6 +1721,49 @@
         '개를 하나씩 길게 쓰고' + (many ? ' 마지막에 ' + list.length + '명 전체를 종합합니다.' : ' 끝냅니다.') +
         ' 한 쌍만 먼저 보려면 카드의 “이 쌍만 생성”을 누르세요.</span></div>'), pel.nextSibling);
     });
+  }
+
+  /* ---------- 재미로 보는 순위 ---------- */
+  var MEDAL = ['🥇', '🥈', '🥉'];
+  function fortuneHTML(list, Rs) {
+    if (!window.Fortune) return '';
+    var F = Fortune.rank(Rs);
+    var anyNoTime = Rs.some(function (R) { return R.unknownTime; });
+    var h = ['<section class="block"><div class="sec-head"><h2>재미로 보는 순위</h2>' +
+      '<span class="note">사주로 뽑은 예측입니다. 그대로 믿지 마세요</span></div>'];
+
+    h.push('<div class="fun-grid">' + F.cats.map(function (c) {
+      return '<div class="fun-card"><h4>' + esc(c.title) + '</h4><ol class="fun-rank">' +
+        c.rows.map(function (r) {
+          return '<li' + (r.place === 1 ? ' class="top"' : '') + '>' +
+            '<span class="pl">' + (MEDAL[r.place - 1] || r.place) + '</span>' +
+            '<span class="nm">' + nameTag(list[r.i], Rs[r.i]) + '</span>' +
+            '<span class="v">' + esc(r.label) + '</span>' +
+            '<span class="sb">' + esc(r.sub) + '</span></li>';
+        }).join('') + '</ol></div>';
+    }).join('') + '</div>');
+
+    h.push('<details class="adv" style="margin-top:18px"><summary>한 사람씩 자세히 · 왜 그렇게 봤는지</summary>' +
+      F.profiles.map(function (p, i) {
+        function why(a) { return a.length ? '<div class="fw">' + a.map(function (x) { return esc(x); }).join(' · ') + '</div>' : ''; }
+        return '<div class="fun-person"><h4>' + nameTag(list[i], Rs[i]) +
+          (p.unknownTime ? ' <span class="notime">시각모름</span>' : '') + '</h4>' +
+          '<dl class="kv">' +
+          '<dt>첫 연애</dt><dd><b>' + p.firstLove.age + '세</b> (' + p.firstLove.year + '년쯤)' + why(p.firstLove.why) + '</dd>' +
+          '<dt>결혼</dt><dd><b>' + p.marriage.age + '세</b> (' + p.marriage.year + '년쯤) · 결혼 의지 ' + p.marriage.will + '/100' +
+          (p.marriage.will < 35 ? ' — 혼자 사는 쪽도 충분히 가능하다' : '') + why(p.marriage.why) + '</dd>' +
+          '<dt>연애 횟수</dt><dd><b>결혼 전까지 약 ' + p.count.n + '번</b>' + why(p.count.why) + '</dd>' +
+          '<dt>연애 기간</dt><dd><b>평균 ' + esc(p.duration.label) + '</b>' + why(p.duration.why) + '</dd>' +
+          '<dt>취직</dt><dd><b>' + p.job.age + '세</b> (' + p.job.year + '년쯤) · ' + esc(p.job.path) + why(p.job.why) + '</dd>' +
+          '</dl></div>';
+      }).join('') + '</details>');
+
+    h.push('<p class="fun-note">대운에서 배우자성(남자는 재성, 여자는 관성)·관성이 들어오는 구간을 잡고 ' +
+      '도화·합충·공망 같은 구조로 보정한 값입니다. 명리에서 시기를 잡는 흔한 방식이지만 ' +
+      '<b>사람의 선택과 환경이 훨씬 크게 작용합니다.</b> 순위는 놀이로만 보세요.' +
+      (anyNoTime ? ' 출생 시각을 모르는 사람이 있어 더 헐거운 값입니다.' : '') + '</p>');
+
+    return h.join('') + '</section>';
   }
 
   function paneNavHTML(k, keys) {
