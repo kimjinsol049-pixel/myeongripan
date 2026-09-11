@@ -423,6 +423,54 @@
     return out;
   }
 
+  /* 캐릭터 — 올해·연애·건강·첫인상·외모·이미지·옷·동물.
+     화면에 있는 값은 저장한 이미지에도 그대로 있어야 한다. */
+  function personaParts(R) {
+    if (!global.Persona) return [];
+    var P = global.Persona.of(R);
+    var out = [{ t: 'gap', h: 14 }, { t: 'eyebrow', s: '올해 · 연애 · 건강 · 첫인상 · 외모' }];
+    function head(s) { out.push({ t: 'p', s: s, bold: true, color: C.gold, size: 24, lh: 38, after: 4 }); }
+    function li(s) { out.push({ t: 'p', s: s, bullet: true, size: 22, lh: 34, after: 2 }); }
+    function para(s) { out.push({ t: 'p', s: s, size: 22, lh: 34, after: 4 }); }
+
+    head(P.animal.emoji + ' 닮은 동물 — ' + P.animal.name);
+    para(P.animal.desc + ' ' + P.animal.extra);
+
+    head(P.thisYear.year + '년 연애 시기 — 세운 ' + P.thisYear.gz);
+    P.thisYear.note.forEach(li);
+    if (P.thisYear.months.length)
+      li('움직이는 달 — ' + P.thisYear.months.map(function (m) { return m.m + '(' + m.gz + ', ' + m.why.join('·') + ')'; }).join(', '));
+
+    head('연애 스타일 — 일지 ' + P.loveStyle.god);
+    para(P.loveStyle.main);
+    P.loveStyle.extra.forEach(li);
+
+    head('만나는 사람 특징');
+    P.partner.lines.forEach(para);
+
+    head('건강운 ' + P.health.score + '점 · ' + P.health.grade);
+    P.health.notes.forEach(li);
+    P.health.care.forEach(function (c) { li(c.organ + ' — ' + c.why); });
+
+    head('첫인상 — 일간 ' + S.STEM_H[R.dm] + ', ' + P.firstLook.key);
+    P.firstLook.lines.forEach(para);
+    if (P.firstLook.gap) li('그런데 실제로는 — ' + P.firstLook.gap + ' (일지 ' + P.firstLook.dayGod + ')');
+
+    head('외모 특징');
+    P.looks.items.forEach(function (it) { li(it.part + ' — ' + it.d); });
+    P.looks.marks.forEach(li);
+
+    head('남에게 보이는 이미지 — ' + P.image.role);
+    P.image.lines.forEach(para);
+    if (P.image.heard.length) li('자주 듣는 말 — ' + P.image.heard.map(function (x) { return '“' + x + '”'; }).join(' '));
+    P.image.misread.forEach(function (m) { li('오해받는 지점 — ' + m); });
+
+    head('어울리는 옷 — ' + P.fashion.color);
+    para(P.fashion.item);
+    li('피할 것 — ' + P.fashion.avoidColor + ' 계열, ' + P.fashion.avoid);
+    return out;
+  }
+
   /** 개인 사주 — 전체 */
   function soloFull(R, person, store, defs, opt) {
     return fontsReady().then(function () {
@@ -463,6 +511,8 @@
         );
       }
       parts = parts.concat(shinsalParts(R));
+      parts.push({ t: 'gap', h: 10 }, { t: 'rule' });
+      parts = parts.concat(personaParts(R));
       parts.push({ t: 'gap', h: 10 }, { t: 'rule' });
       (defs || []).forEach(function (d) {
         var body = (store && store[d.id]) || (global.Rules ? global.Rules.solo(R, d.id) : '');

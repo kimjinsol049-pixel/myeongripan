@@ -1239,7 +1239,7 @@
       (R.unknownTime ? unknownTimeNote(null) : '') +
       plateHTML(R) + panelsHTML(R) + GL.sectionHTML() + '</section>');
 
-    h.push('<section class="block"><div class="sec-head"><h2>올해 · 연애 · 건강 · 이미지</h2>' +
+    h.push('<section class="block"><div class="sec-head"><h2>올해 · 연애 · 건강 · 첫인상 · 외모</h2>' +
       '<span class="note">계산에서 바로 나온 값입니다. 재미로 보세요</span></div>' +
       personaHTML(R, null) + '</section>');
 
@@ -1776,9 +1776,35 @@
         : '<p class="pz-none">특별히 약한 곳이 없다.</p>') +
       '<p class="pz-tip">용신 ' + esc(P.health.best) + ' 기운을 채우는 생활이 몸에도 좋다.</p></div>');
 
-    // 이미지
-    h.push('<div class="pz"><h4>남에게 보이는 이미지</h4>' +
-      P.image.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</div>');
+    // 첫인상
+    h.push('<div class="pz pz-wide"><h4>첫인상</h4>' +
+      '<p class="pz-lead">일간 ' + S.STEM_H[R.dm] + ' — ' + esc(P.firstLook.key) + '</p>' +
+      P.firstLook.lines.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') +
+      (P.firstLook.gap ? '<p class="pz-gap"><b>그런데 실제로는</b> ' + esc(P.firstLook.gap) +
+        ' <span class="mono">(일지 ' + esc(P.firstLook.dayGod) + ')</span></p>' : '') +
+      '</div>');
+
+    // 외모 특징
+    h.push('<div class="pz pz-wide"><h4>외모 특징</h4>' +
+      '<p class="pz-lead el-' + P.looks.el + '">' + S.EL_H[P.looks.el] + ' ' + S.EL[P.looks.el] + ' 일간의 골격</p>' +
+      '<dl class="pz-look">' + P.looks.items.map(function (it) {
+        return '<dt>' + esc(it.part) + '</dt><dd>' + esc(it.d) + '</dd>';
+      }).join('') + '</dl>' +
+      (P.looks.marks.length
+        ? '<div class="pz-care">' + P.looks.marks.map(function (m) { return '<div>' + esc(m) + '</div>'; }).join('') + '</div>'
+        : '') +
+      '<p class="pz-tip">외모는 사주가 가장 느슨하게 맞히는 영역입니다. 경향으로만 보세요.</p></div>');
+
+    // 남에게 보이는 이미지
+    h.push('<div class="pz pz-wide"><h4>남에게 보이는 이미지</h4>' +
+      '<p class="pz-lead">' + esc(P.image.role) + '</p>' +
+      P.image.lines.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') +
+      (P.image.heard.length ? '<div class="pz-heard"><b>자주 듣는 말</b>' +
+        P.image.heard.map(function (x) { return '<span>“' + esc(x) + '”</span>'; }).join('') + '</div>' : '') +
+      (P.image.misread.length ? '<div class="pz-care">' + P.image.misread.map(function (m) {
+        return '<div><b>오해받는 지점</b> ' + esc(m) + '</div>';
+      }).join('') + '</div>' : '') +
+      '</div>');
 
     // 옷
     h.push('<div class="pz"><h4>어울리는 옷</h4>' +
@@ -1811,7 +1837,7 @@
         }).join('') + '</ol></div>';
     }).join('') + '</div>');
 
-    h.push('<details class="adv" style="margin-top:18px"><summary>한 사람씩 — 올해 연애·스타일·건강·이미지·옷·닮은 동물</summary>' +
+    h.push('<details class="adv" style="margin-top:18px"><summary>한 사람씩 — 올해 연애·스타일·건강·첫인상·외모·이미지·옷·닮은 동물</summary>' +
       list.map(function (p, i) {
         return '<div class="fun-person">' + personaHTML(Rs[i], p.name) + '</div>';
       }).join('') + '</details>');
