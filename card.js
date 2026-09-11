@@ -454,7 +454,7 @@
 
     head('첫인상 — 일간 ' + S.STEM_H[R.dm] + ', ' + P.firstLook.key);
     P.firstLook.lines.forEach(para);
-    if (P.firstLook.gap) li('그런데 실제로는 — ' + P.firstLook.gap + ' (일지 ' + P.firstLook.dayGod + ')');
+    if (P.firstLook.gap) li('그런데 — ' + P.firstLook.gap + ' (일지 ' + P.firstLook.dayGod + ')');
 
     head('외모 특징');
     P.looks.items.forEach(function (it) { li(it.part + ' — ' + it.d); });

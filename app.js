@@ -1780,7 +1780,7 @@
     h.push('<div class="pz pz-wide"><h4>첫인상</h4>' +
       '<p class="pz-lead">일간 ' + S.STEM_H[R.dm] + ' — ' + esc(P.firstLook.key) + '</p>' +
       P.firstLook.lines.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') +
-      (P.firstLook.gap ? '<p class="pz-gap"><b>그런데 실제로는</b> ' + esc(P.firstLook.gap) +
+      (P.firstLook.gap ? '<p class="pz-gap"><b>그런데</b> ' + esc(P.firstLook.gap) +
         ' <span class="mono">(일지 ' + esc(P.firstLook.dayGod) + ')</span></p>' : '') +
       '</div>');
 
