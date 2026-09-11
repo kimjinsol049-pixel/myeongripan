@@ -726,10 +726,28 @@
     return L.join('\n');
   }
 
+  /* ---------- 조사 다듬기 ----------
+     이름 뒤의 "이(가)" 같은 표기를 앞 글자 받침에 맞춰 하나로 고른다.
+     한글이 아니면 받침 없는 형태를 쓴다. */
+  var JOSA = {
+    '이(가)': ['이', '가'], '은(는)': ['은', '는'], '을(를)': ['을', '를'],
+    '과(와)': ['과', '와'], '아(야)': ['아', '야'], '이다': ['이다', '다']
+  };
+  function josa(s) {
+    return String(s).replace(/(.)(이\(가\)|은\(는\)|을\(를\)|과\(와\)|아\(야\)|으로\(로\))/g, function (m, ch, tag) {
+      var code = ch.charCodeAt(0);
+      var jong = (code >= 0xAC00 && code <= 0xD7A3) ? (code - 0xAC00) % 28 : -1;
+      if (tag === '으로(로)') return ch + (jong === 0 || jong === 8 ? '로' : '으로');
+      var pair = JOSA[tag];
+      return ch + (jong <= 0 ? pair[1] : pair[0]);
+    });
+  }
+
   /* ---------- 공개 ---------- */
   global.Rules = {
-    solo: function (R, id) { try { return SOLO[id] ? SOLO[id](R) + '\n' + soloRemedy(R, id) : ''; } catch (e) { return ''; } },
-    pair: function (A, B, C, id) { try { return PAIR[id] ? PAIR[id](A, B, C) + '\n' + pairRemedy(A, B, C, id) : ''; } catch (e) { return ''; } },
-    group: function (list, G, id) { try { return GROUP[id] ? GROUP[id](list, G) + '\n' + groupRemedy(list, G, id) : ''; } catch (e) { return ''; } }
+    josa: josa,
+    solo: function (R, id) { try { return SOLO[id] ? josa(SOLO[id](R) + '\n' + soloRemedy(R, id)) : ''; } catch (e) { return ''; } },
+    pair: function (A, B, C, id) { try { return PAIR[id] ? josa(PAIR[id](A, B, C) + '\n' + pairRemedy(A, B, C, id)) : ''; } catch (e) { return ''; } },
+    group: function (list, G, id) { try { return GROUP[id] ? josa(GROUP[id](list, G) + '\n' + groupRemedy(list, G, id)) : ''; } catch (e) { return ''; } }
   };
 })(typeof window !== 'undefined' ? window : this);
