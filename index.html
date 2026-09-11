@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>명리판</title>
+  <meta name="description" content="생년월일시로 사주 원국을 세우고, 인원 제한 없이 궁합을 읽어 링크로 공유하는 명리 도구.">
+  <meta property="og:title" content="명리판">
+  <meta property="og:description" content="사주를 계산하고, 사람과 사람 사이를 읽는다.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23C8A24A'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' font-family='serif' fill='%230B0D11'%3E%E5%91%BD%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@600&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#" aria-label="명리판 처음으로">
+      <span class="seal">命</span>
+      <b>명리판</b>
+      <span>MYEONGRIPAN</span>
+    </a>
+    <nav class="tabs" aria-label="주요 화면">
+      <button type="button" data-tab="home" aria-current="true">사주</button>
+      <button type="button" data-tab="match" aria-current="false">궁합</button>
+    </nav>
+    <button type="button" class="icon-btn" id="theme" title="테마 바꾸기" aria-label="테마 바꾸기">◐</button>
+  </header>
+
+  <main id="app">
+    <div class="hero">
+      <div class="cols">
+        <div>
+          <div class="eyebrow">천간지지 · 오행 · 십신</div>
+          <h1>사주를 계산하고,<br>사람과 사람 사이를 읽는다</h1>
+          <p>생년월일시를 넣으면 천문 계산으로 절기와 삭을 구해 사주 원국을 세웁니다.
+            음력·윤달, 역대 서머타임, 1954~1961년 동경 127.5° 표준시까지 반영합니다.
+            해석은 돌려 말하지 않습니다.</p>
+        </div>
+        <div>
+          <div class="glyph-row">
+            <i>甲</i><i>乙</i><i>丙</i><i>丁</i><i>戊</i><i>己</i><i>庚</i><i>辛</i><i>壬</i><i>癸</i>
+            <i>子</i><i>丑</i><i>寅</i><i>卯</i><i>辰</i><i>巳</i><i>午</i><i>未</i><i>申</i><i>酉</i><i>戌</i><i>亥</i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <section class="block">
+      <div class="empty">불러오는 중…</div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>계산은 천문 근사식(태양 황경·삭 시각)으로 절기와 음력을 구합니다. 절기 경계 30분 이내 출생은
+      월주가 달라질 수 있으니 만세력 원본과 대조하세요. 사람 정보와 해석은 이 브라우저에만 저장되며,
+      공유 링크를 만들 때만 링크 안에 담깁니다.</p>
+    <p>사주는 통계와 상징의 언어입니다. 의료·법률·투자 판단의 근거로 쓰지 마세요.</p>
+  </footer>
+</div>
+
+<script src="saju.js"></script>
+<script src="interpret.js"></script>
+<script src="rules.js"></script>
+<script src="ai.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
