@@ -35,14 +35,15 @@
       ]
     },
     {
-      id: 'google', label: 'Gemini (내 키)', vendor: 'Google', free: true,
+      id: 'google', label: 'Gemini', vendor: '내 키 · 무료 한도', free: true,
       keyUrl: 'https://aistudio.google.com/apikey',
       note: '내 Google AI Studio 키로 직접 호출합니다. 위의 "설정 불필요"가 한도에 걸릴 때 쓰면 됩니다. Flash 계열은 무료 한도(분당·일일 요청 제한) 안에서 비용 없이 씁니다. 한도를 넘으면 잠시 기다렸다가 다시 하세요.',
       defaults: [
-        { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash — 빠름', free: true },
-        { id: 'gemini-flash-latest', label: 'Gemini Flash 최신', free: true },
+        { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash — 한도 넉넉함', free: true },
         { id: 'gemini-flash-lite-latest', label: 'Gemini Flash-Lite — 가장 가벼움', free: true },
-        { id: 'gemini-pro-latest', label: 'Gemini Pro 최신 — 더 깊게 (무료 한도 적음)' }
+        { id: 'gemini-flash-latest', label: 'Gemini Flash 최신', free: true },
+        { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash — 가장 똑똑함 (하루 20회)', free: true },
+        { id: 'gemini-pro-latest', label: 'Gemini Pro 최신 — 더 깊게 (한도 거의 없음)' }
       ]
     },
     {
@@ -61,10 +62,10 @@
       keyUrl: 'https://openrouter.ai/keys',
       note: '무료 가입만 하면 결제 없이 키가 나오고, 이름 끝에 :free 가 붙은 모델은 돈이 들지 않습니다. 키를 넣고 "목록 새로 고침"을 누르면 지금 무료인 모델이 위쪽에 뜹니다. 다만 OpenAI(GPT)와 Anthropic(Claude) 모델은 여기서도 전부 유료입니다.',
       defaults: [
-        { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', label: 'Nemotron 3 Ultra 550B — 무료, 가장 큼', free: true },
-        { id: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B — 무료', free: true },
-        { id: 'nvidia/nemotron-3-super-120b-a12b:free', label: 'Nemotron 3 Super 120B — 무료', free: true },
-        { id: 'thinkingmachines/inkling:free', label: 'Inkling — 무료', free: true }
+        { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', label: 'Nemotron 3 Ultra 550B — 가장 큼', free: true },
+        { id: 'google/gemma-4-31b-it:free', label: 'Gemma 4 31B', free: true },
+        { id: 'nvidia/nemotron-3-super-120b-a12b:free', label: 'Nemotron 3 Super 120B', free: true },
+        { id: 'thinkingmachines/inkling:free', label: 'Inkling', free: true }
       ]
     }
   ];
