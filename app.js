@@ -306,6 +306,7 @@
       h.push('<div class="stage' + c(i) + '">' + esc(R.pillars[i].stage) + '</div>');
     });
     h.push('</div></div>');
+    h.push('<p class="plate-legend">줄 순서: 천간 십신 → 천간 → 지지 → 지지 십신 → 지장간 → 십이운성. 기둥은 오른쪽부터 년·월·일·시.</p>');
     if (R.unknownTime) h.push('<p style="font-size:13px;color:var(--fg-3);margin:9px 0 0">' +
       '출생 시각을 모르므로 시주는 회색 처리하고 오행·십신·합충 계산에서 제외했습니다. 나머지 세 기둥으로 봅니다.</p>');
     return h.join('');

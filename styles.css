@@ -243,11 +243,27 @@ details.adv .field-grid { margin-top: 14px; }
 .alert.info { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 9%, transparent); color: var(--fg-2); }
 
 /* ===== 만세력 판 ===== */
-.plate-wrap { overflow-x: auto; padding-bottom: 4px; }
+.plate-wrap { padding-bottom: 4px; }
 .plate {
-  display: grid; grid-template-columns: 66px repeat(4, minmax(88px, 1fr));
-  border: 1px solid var(--gold-soft); background: var(--bg-2); min-width: 500px;
+  display: grid; grid-template-columns: 66px repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--gold-soft); background: var(--bg-2);
   border-radius: 4px; overflow: hidden;
+}
+.plate-legend { display: none; font-size: 12px; color: var(--fg-3); margin: 8px 0 0; line-height: 1.5; }
+/* 좁은 화면: 행 라벨을 숨기고 4기둥이 화면 폭에 맞게 들어간다 */
+@media (max-width: 600px) {
+  .plate { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .plate .rowlab { display: none; }
+  .plate > div { padding: 6px 3px; }
+  .plate .colhead { font-size: 12.5px; }
+  .plate .god { font-size: 11px; }
+  .plate .char { padding: 3px 2px 6px; }
+  .plate .char .h { font-size: 30px; }
+  .plate .char .k { font-size: 9.5px; letter-spacing: 0; }
+  .plate .char .stripe { width: 22px; margin-top: 3px; }
+  .plate .hid { font-size: 11.5px; letter-spacing: .04em; }
+  .plate .stage { font-size: 10px; }
+  .plate-legend { display: block; }
 }
 .plate > div { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 9px 6px; text-align: center; }
 .plate > div:nth-child(5n) { border-right: 0; }
@@ -309,6 +325,12 @@ details.adv .field-grid { margin-top: 14px; }
 .daewoon .yr { font-family: var(--mono); font-size: 10.5px; color: var(--fg-3); }
 .daewoon .now { background: color-mix(in srgb, var(--gold) 13%, var(--bg-2)); }
 .daewoon .now .age { color: var(--gold); }
+@media (max-width: 600px) {
+  .daewoon { flex-wrap: wrap; overflow: visible; }
+  .daewoon > div { flex: 1 0 33.333%; border-bottom: 1px solid var(--line); }
+  .daewoon > div:nth-child(3n) { border-right: 0; }
+  .daewoon > div:nth-last-child(-n+3) { border-bottom: 0; }
+}
 
 /* ===== 해석 본문 ===== */
 .reading { margin-top: 10px; }
