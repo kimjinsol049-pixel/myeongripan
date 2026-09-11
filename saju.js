@@ -580,10 +580,12 @@
     else if (mode === 'none') lst = jdUT + tz / 24;
     else lst = jdUT + tz / 24 - ((tz * 15 - 127.5) * 4) / 1440;
 
-    // 분 단위로 반올림 — 정각 경계(13:00 등)에서 부동소수점 오차로 시지가 한 칸 밀리는 것을 막는다
-    lst = Math.round(lst * 1440) / 1440;
     var dayNum = Math.floor(lst + 0.5);
     var hourFrac = (lst + 0.5 - dayNum) * 24;
+    // 큰 율리우스일에서 소수부를 뽑으면 double 오차(약 4.7e-10일)가 남아 정각이 12.9999…로 나온다.
+    // 시각을 분 단위로 반올림해 정각 경계에서 시지가 한 칸 밀리는 것을 막고, 24시가 되면 다음 날로 넘긴다.
+    hourFrac = Math.round(hourFrac * 60) / 60;
+    if (hourFrac >= 24) { hourFrac -= 24; dayNum += 1; }
     var hourBranch = Math.floor(mod(hourFrac + 1, 24) / 2);
     var lateZi = inp.lateZi !== false; // 23시 이후 일진을 다음날로
     var dayNumForPillar = (lateZi && hourFrac >= 23) ? dayNum + 1 : dayNum;
