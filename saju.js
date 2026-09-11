@@ -688,6 +688,8 @@
       gyeok: gyeokMap[monthGod] || (monthGod + '격'),
       godCount: godCount,
       shinsal: shinsalFor(active, dm),
+      // 길성·흉살 상세 (shinsal.js). 없으면 빈 배열
+      shinsalAll: (global.Shinsal ? global.Shinsal.detect(active, gongB) : []),
       daewoon: daewoon,
       relations: rel
     };

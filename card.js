@@ -270,6 +270,223 @@
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
 
+  /* ============================================================
+     전체 저장 — 내용을 전부 담아 세로로 길게 그린다.
+     캔버스 높이 한계가 있어 12000px 단위로 쪽을 나눈다.
+     ============================================================ */
+  var PAGE_MAX = 11000;
+
+  /** 텍스트를 블록 목록으로 바꾼다. 각 블록은 높이를 미리 계산해 둔다. */
+  function buildBlocks(ctx, w, parts) {
+    var blocks = [];
+    parts.forEach(function (p) {
+      if (p.t === 'gap') { blocks.push({ h: p.h, draw: function () { } }); return; }
+      if (p.t === 'rule') {
+        blocks.push({ h: 25, draw: function (c, y) { c.fillStyle = C.line; c.fillRect(PAD, y + 12, w, 1); } });
+        return;
+      }
+      if (p.t === 'eyebrow') {
+        blocks.push({ h: 40, draw: function (c, y) { text(c, p.s, PAD, y + 16, '500 17px ' + F.mono, p.color || C.gold); } });
+        return;
+      }
+      if (p.t === 'h') {
+        ctx.font = '700 ' + (p.size || 34) + 'px ' + F.serif;
+        var hl = wrap(ctx, p.s, w);
+        blocks.push({
+          h: hl.length * (p.size || 34) * 1.35 + 14,
+          draw: function (c, y) {
+            c.font = '700 ' + (p.size || 34) + 'px ' + F.serif; c.fillStyle = p.color || C.fg;
+            c.textAlign = 'left'; c.textBaseline = 'middle';
+            hl.forEach(function (l, i) { c.fillText(l, PAD, y + (p.size || 34) * 0.75 + i * (p.size || 34) * 1.35); });
+          }
+        });
+        return;
+      }
+      // 본문
+      var size = p.size || 25, lh = p.lh || 40, bullet = p.bullet;
+      ctx.font = (p.bold ? '600 ' : '400 ') + size + 'px ' + F.sans;
+      var lines = wrap(ctx, p.s, w - (bullet ? 26 : 0));
+      blocks.push({
+        h: lines.length * lh + (p.after || 10),
+        draw: function (c, y) {
+          c.font = (p.bold ? '600 ' : '400 ') + size + 'px ' + F.sans;
+          c.fillStyle = p.color || (p.bold ? C.gold : C.fg2);
+          c.textAlign = 'left'; c.textBaseline = 'middle';
+          if (bullet) { c.fillStyle = C.gold; c.fillText('·', PAD, y + lh / 2); c.fillStyle = p.color || C.fg2; }
+          lines.forEach(function (l, i) { c.fillText(l, PAD + (bullet ? 26 : 0), y + lh / 2 + i * lh); });
+        }
+      });
+    });
+    return blocks;
+  }
+
+  /** 마크다운을 블록 지시문으로 편다 */
+  function mdParts(md) {
+    var parts = [];
+    String(md || '').split('\n').forEach(function (raw) {
+      var L = raw.trim();
+      if (!L) { parts.push({ t: 'gap', h: 10 }); return; }
+      var mHead = L.match(/^\*\*(.+?)\*\*$/);
+      if (mHead) { parts.push({ t: 'gap', h: 8 }, { t: 'p', s: mHead[1], bold: true, size: 25, lh: 38, after: 4 }); return; }
+      if (/^[-*]\s+/.test(L)) { parts.push({ t: 'p', s: L.replace(/^[-*]\s+/, '').replace(/\*\*/g, ''), bullet: true, size: 24, lh: 38, after: 4 }); return; }
+      parts.push({ t: 'p', s: L.replace(/\*\*/g, ''), size: 25, lh: 40, after: 8 });
+    });
+    return parts;
+  }
+
+  /** 블록들을 쪽으로 나눠 캔버스 배열을 만든다 */
+  function paint(blocks, headerDraw, footerNote, pageLabel) {
+    var pages = [], cur = [], h = 0;
+    var headH = headerDraw ? headerDraw.h : 0;
+    blocks.forEach(function (b) {
+      if (h + b.h > PAGE_MAX - 140 && cur.length) { pages.push({ blocks: cur, h: h }); cur = []; h = 0; }
+      cur.push(b); h += b.h;
+    });
+    if (cur.length) pages.push({ blocks: cur, h: h });
+
+    return pages.map(function (pg, pi) {
+      var H = Math.max(600, (pi === 0 ? headH : PAD + 90) + pg.h + 150);
+      var f = frame(H), ctx = f.ctx;
+      var y = PAD + 110;
+      if (pi === 0 && headerDraw) { headerDraw.draw(ctx); y = headerDraw.h; }
+      else { text(ctx, pageLabel + ' — 이어서 (' + (pi + 1) + '/' + pages.length + ')', PAD, PAD + 100, '500 20px ' + F.mono, C.fg3); y = PAD + 150; }
+      pg.blocks.forEach(function (b) { b.draw(ctx, y); y += b.h; });
+      footer(ctx, H, pages.length > 1 ? (footerNote + ' · ' + (pi + 1) + '/' + pages.length) : footerNote);
+      return f.cv;
+    });
+  }
+
+  function shinsalParts(R) {
+    var ss = R.shinsalAll || [];
+    if (!ss.length) return [];
+    var out = [{ t: 'gap', h: 14 }, { t: 'eyebrow', s: '신살 ' + ss.length + '개' }];
+    ['길', '중', '흉'].forEach(function (k) {
+      var g = ss.filter(function (s) { return s.kind === k; });
+      if (!g.length) return;
+      var col = k === '길' ? ELC[0] : k === '흉' ? ELC[1] : C.gold;
+      out.push({ t: 'p', s: ({ 길: '길성', 중: '중립', 흉: '흉살' })[k] + ' — ' + g.map(function (s) { return s.name; }).join(', '), bold: true, color: col, size: 24, lh: 38, after: 4 });
+      g.forEach(function (s) {
+        out.push({ t: 'p', s: s.name + (s.where.length ? '(' + s.where.join('·') + ')' : '') + ' — ' + s.desc, bullet: true, size: 22, lh: 34, after: 2 });
+      });
+    });
+    return out;
+  }
+
+  /** 개인 사주 — 전체 */
+  function soloFull(R, person, store, defs) {
+    return fontsReady().then(function () {
+      var w = W - PAD * 2;
+      var mc = document.createElement('canvas').getContext('2d');
+      var i = person;
+      var birth = R.solar.y + '.' + pad(R.solar.m) + '.' + pad(R.solar.d) +
+        (i.cal === 'lunar' && R.lunar ? ' (음력 ' + R.lunar.y + '.' + pad(R.lunar.m) + '.' + pad(R.lunar.d) + ')' : '') +
+        ' · ' + (R.unknownTime ? '시각 모름' : pad(i.hour) + ':' + pad(i.minute || 0)) + ' · ' + (i.gender === 'M' ? '남' : '여');
+      var tot = R.scores.reduce(function (a, b) { return a + b; }, 0) || 1;
+
+      var headH = PAD + 110 + 46 + 58 + 46 + 330 + 34 + 70 + 30 + 92 + 46;
+      var header = {
+        h: headH,
+        draw: function (ctx) {
+          var y = PAD + 110;
+          eyebrow(ctx, '사주 원국 · ' + R.gyeok + ' · ' + R.strength.label, y); y += 46;
+          nameWithEmoji(ctx, R, person.name, PAD, y, 56); y += 58;
+          text(ctx, birth, PAD, y, '400 22px ' + F.mono, C.fg2); y += 46;
+          y += pillars(ctx, PAD, y, w, R) + 34;
+          y += elbar(ctx, PAD, y, w, R.scores) + 30;
+          facts(ctx, PAD, y, w, [
+            ['격국', R.gyeok, C.gold],
+            ['일간 강약', R.strength.label + ' ' + Math.round(R.strength.pct), C.fg],
+            ['용신 / 기신', S.EL[R.yongsin.main] + ' / ' + S.EL[R.yongsin.gi], ELC[R.yongsin.main]]
+          ]);
+        }
+      };
+
+      var parts = shinsalParts(R);
+      parts.push({ t: 'gap', h: 10 }, { t: 'rule' });
+      (defs || []).forEach(function (d) {
+        var body = (store && store[d.id]) || (global.Rules ? global.Rules.solo(R, d.id) : '');
+        if (!body) return;
+        parts.push({ t: 'eyebrow', s: d.title, color: ELC[d.el] });
+        parts.push({ t: 'h', s: d.title, size: 34 });
+        parts = parts.concat(mdParts(body));
+        parts.push({ t: 'gap', h: 16 }, { t: 'rule' });
+      });
+
+      var blocks = buildBlocks(mc, w, parts);
+      return paint(blocks, header, '띠 ' + R.zodiac + ' · 공망 ' + R.gongmang.map(function (b) { return S.BRANCH_H[b]; }).join(''), person.name + ' 사주');
+    });
+  }
+
+  /** 궁합 — 전체 */
+  function matchFull(list, Rs, G, stores, groupStore, pairDefs, groupDefs) {
+    return fontsReady().then(function () {
+      var w = W - PAD * 2;
+      var mc = document.createElement('canvas').getContext('2d');
+      var names = list.map(function (p, i) { return p.name + ' ' + S.STEM_EMOJI[Rs[i].dm]; }).join('  ·  ');
+      var headH = PAD + 110 + 50 + 110 + 40;
+      var header = {
+        h: headH,
+        draw: function (ctx) {
+          var y = PAD + 110;
+          eyebrow(ctx, '궁합 · ' + list.length + '명', y); y += 46;
+          ctx.font = '700 40px ' + F.serif;
+          wrap(ctx, names, w).slice(0, 2).forEach(function (l) { text(ctx, l, PAD, y, '700 40px ' + F.serif, C.fg); y += 52; });
+          text(ctx, '평균 ' + G.avg + '점 · 최고 ' + G.best.a + ' ↔ ' + G.best.b + ' ' + G.best.total +
+            ' · 최저 ' + G.worst.a + ' ↔ ' + G.worst.b + ' ' + G.worst.total, PAD, y + 6, '400 22px ' + F.mono, C.fg2);
+        }
+      };
+
+      var parts = [];
+      G.pairs.forEach(function (c) {
+        var key = c.i + '-' + c.j, st = stores[key] || {};
+        parts.push({ t: 'gap', h: 12 }, { t: 'rule' });
+        parts.push({ t: 'eyebrow', s: '쌍 · 종합 ' + c.total + '점' });
+        parts.push({ t: 'h', s: c.a + ' ↔ ' + c.b, size: 38 });
+        parts.push({ t: 'p', s: Object.keys(c.sub).map(function (k) { return k + ' ' + c.sub[k]; }).join('   '), size: 23, lh: 36, color: C.fg3 });
+        parts.push({ t: 'p', s: '일간 ' + c.dm.label + ' — ' + c.dm.desc, size: 23, lh: 36 });
+        parts.push({ t: 'p', s: '일지 ' + c.dayBranch.label + ' — ' + c.dayBranch.desc, size: 23, lh: 36 });
+        if (c.relations.length) parts.push({ t: 'p', s: '합충 ' + c.relations.map(function (r) { return r.p + ' ' + r.t; }).join(' / '), size: 21, lh: 32, color: C.fg3 });
+        (pairDefs || []).forEach(function (d) {
+          var body = st[d.id] || (global.Rules ? global.Rules.pair(Rs[c.i], Rs[c.j], c, d.id) : '');
+          if (!body) return;
+          parts.push({ t: 'gap', h: 10 }, { t: 'eyebrow', s: d.title, color: ELC[d.el] });
+          parts.push({ t: 'h', s: d.title, size: 30 });
+          parts = parts.concat(mdParts(body));
+        });
+      });
+      if (groupDefs && list.length > 2) {
+        parts.push({ t: 'gap', h: 14 }, { t: 'rule' }, { t: 'h', s: '전체 종합', size: 38 });
+        groupDefs.forEach(function (d) {
+          var body = groupStore[d.id] || (global.Rules ? global.Rules.group(Rs, G, d.id) : '');
+          if (!body) return;
+          parts.push({ t: 'gap', h: 10 }, { t: 'eyebrow', s: d.title, color: ELC[d.el] });
+          parts.push({ t: 'h', s: d.title, size: 30 });
+          parts = parts.concat(mdParts(body));
+        });
+      }
+
+      var blocks = buildBlocks(mc, w, parts);
+      var tot = G.merged.reduce(function (a, b) { return a + b; }, 0) || 1;
+      return paint(blocks, header,
+        '합산 오행 ' + S.EL.map(function (e, k) { return e + Math.round(G.merged[k] / tot * 100); }).join(' '),
+        list.map(function (p) { return p.name; }).join('·') + ' 궁합');
+    });
+  }
+
+  /** 여러 장을 차례로 저장한다 */
+  function saveAll(canvases, base) {
+    var i = 0;
+    function step() {
+      if (i >= canvases.length) return Promise.resolve(canvases.length);
+      var name = canvases.length > 1 ? base + '_' + (i + 1) + '.png' : base + '.png';
+      return save(canvases[i], name).then(function () {
+        i++;
+        return new Promise(function (ok) { setTimeout(ok, 600); }).then(step);
+      });
+    }
+    return step();
+  }
+
   /* ---------- 저장 ---------- */
   function save(cv, filename) {
     return new Promise(function (ok, fail) {
@@ -289,5 +506,8 @@
     });
   }
 
-  global.Card = { solo: solo, pair: pair, group: group, save: save };
+  global.Card = {
+    solo: solo, pair: pair, group: group, save: save,
+    soloFull: soloFull, matchFull: matchFull, saveAll: saveAll
+  };
 })(typeof window !== 'undefined' ? window : this);

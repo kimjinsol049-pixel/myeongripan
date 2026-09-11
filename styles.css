@@ -339,6 +339,7 @@ details.adv .field-grid { margin-top: 14px; }
 .chip.bad { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); color: var(--bad); }
 .chip.gold { border-color: var(--gold-soft); color: var(--gold); }
 .chip .p { font-family: var(--mono); font-size: 11px; color: var(--fg-3); margin-right: 5px; }
+.ss-lab { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 5px; }
 
 /* 대운 */
 .daewoon { display: flex; gap: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; }

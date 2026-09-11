@@ -79,7 +79,17 @@
       ' · 기신 ' + S.EL[R.yongsin.gi]);
     L.push('공망: ' + R.gongmang.map(function (b) { return S.BRANCH_H[b]; }).join('') +
       ' (해당 자리는 채워도 비는 자리)');
-    L.push('신살: ' + (R.shinsal.length ? R.shinsal.join(', ') : '두드러진 신살 없음'));
+    var ss = R.shinsalAll || [];
+    if (ss.length) {
+      ['길', '중', '흉'].forEach(function (k) {
+        var g = ss.filter(function (s) { return s.kind === k; });
+        if (g.length) L.push(({ 길: '길성', 중: '중립 신살', 흉: '흉살' })[k] + ': ' +
+          g.map(function (s) { return s.name + (s.where.length ? '(' + s.where.join('·') + ')' : ''); }).join(', '));
+      });
+      L.push('※ 위 신살의 뜻: ' + ss.slice(0, 14).map(function (s) { return s.name + '=' + s.desc.split('.')[0]; }).join(' / '));
+    } else {
+      L.push('신살: 두드러진 신살 없음');
+    }
     if (R.relations.length) {
       L.push('원국 내부 관계: ' + R.relations.map(function (r) { return r.a + '·' + r.b + ' ' + r.text; }).join(' / '));
     } else {

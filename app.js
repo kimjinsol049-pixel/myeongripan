@@ -380,9 +380,30 @@
 
     // 신살 · 원국 관계
     h.push('<div class="panels" style="margin-top:22px">');
-    h.push('<div class="panel"><h3>' + GL.term('신살') + '</h3><div class="chips">' +
-      (R.shinsal.length ? R.shinsal.map(function (s) { return '<span class="chip gold">' + esc(s) + '</span>'; }).join('')
-        : '<span class="chip">두드러진 신살 없음</span>') + '</div></div>');
+    var SS = R.shinsalAll || [];
+    var byKind = { 길: [], 중: [], 흉: [] };
+    SS.forEach(function (s) { (byKind[s.kind] || byKind['중']).push(s); });
+    function ssChips(list, cls) {
+      if (!list.length) return '<span class="chip">없음</span>';
+      return list.map(function (s) {
+        return '<span class="chip ' + cls + '" title="' + esc(s.name + (s.where.length ? ' (' + s.where.join(', ') + ')' : '') + ' — ' + s.desc) + '">' +
+          esc(s.name) + (s.where.length ? '<span class="p" style="margin:0 0 0 5px">' + esc(s.where[0]) + '</span>' : '') + '</span>';
+      }).join('');
+    }
+    h.push('<div class="panel" style="grid-column:1/-1"><h3>' + GL.term('신살') + ' · 길성 ' + byKind['길'].length +
+      ' / 중립 ' + byKind['중'].length + ' / 흉살 ' + byKind['흉'].length + '</h3>' +
+      '<div style="display:grid;gap:10px">' +
+      '<div><div class="ss-lab" style="color:var(--good)">길성 — 도움이 되는 별</div><div class="chips">' + ssChips(byKind['길'], 'good') + '</div></div>' +
+      '<div><div class="ss-lab" style="color:var(--gold)">중립 — 쓰기 나름</div><div class="chips">' + ssChips(byKind['중'], 'gold') + '</div></div>' +
+      '<div><div class="ss-lab" style="color:var(--bad)">흉살 — 조심할 별</div><div class="chips">' + ssChips(byKind['흉'], 'bad') + '</div></div>' +
+      '</div>' +
+      (SS.length ? '<details class="adv" style="margin-top:14px"><summary>신살 뜻 풀이 (' + SS.length + '개)</summary>' +
+        '<dl class="gl" style="margin-top:12px">' + SS.map(function (s) {
+          return '<dt style="color:var(--' + ({ 길: 'good', 중: 'gold', 흉: 'bad' })[s.kind] + ')">' + esc(s.name) +
+            (s.where.length ? ' <span class="mono" style="color:var(--fg-3);font-size:11px">' + esc(s.where.join(', ')) + '</span>' : '') +
+            '</dt><dd>' + esc(s.desc) + '</dd>';
+        }).join('') + '</dl></details>' : '') +
+      '</div>');
     h.push('<div class="panel"><h3>' + GL.term('원국 내부 관계') + '</h3><div class="chips">' +
       (R.relations.length ? R.relations.map(function (r) {
         return '<span class="chip ' + (r.good > 0 ? 'good' : 'bad') + '"><span class="p">' + esc(r.a + r.b) + '</span>' + esc(r.text) + '</span>';
@@ -706,17 +727,28 @@
   }
 
   /* ---------- 이미지 · PDF ---------- */
+  function imgErr(e) {
+    var code = e && e.code;
+    if (code === 'declined') return;
+    if (code === 'unavailable' || code === 'not_granted' || code === 'capability_disabled') toast('이 화면에서는 저장이 막혀 있습니다. 웹사이트에서 저장하세요.');
+    else if (code === 'rate_limited') toast('저장 창이 이미 열려 있습니다.');
+    else toast('이미지 저장에 실패했습니다');
+  }
   function saveImage(makeCanvas, filename) {
     toast('이미지를 만드는 중…');
     return makeCanvas().then(function (cv) { return Card.save(cv, filename); })
       .then(function () { toast('이미지를 저장했습니다'); })
-      .catch(function (e) {
-        var code = e && e.code;
-        if (code === 'declined') return;
-        if (code === 'unavailable' || code === 'not_granted' || code === 'capability_disabled') toast('이 화면에서는 저장이 막혀 있습니다. 웹사이트에서 저장하세요.');
-        else if (code === 'rate_limited') toast('저장 창이 이미 열려 있습니다.');
-        else toast('이미지 저장에 실패했습니다');
+      .catch(imgErr);
+  }
+  /** 전체 내용을 담은 긴 이미지. 너무 길면 여러 장으로 나뉜다. */
+  function saveFullImage(makeCanvases, base) {
+    toast('전체 이미지를 만드는 중…');
+    return makeCanvases().then(function (list) {
+      if (list.length > 1) toast(list.length + '장으로 나눠 저장합니다');
+      return Card.saveAll(list, base).then(function (n) {
+        toast(n > 1 ? n + '장을 저장했습니다' : '이미지를 저장했습니다');
       });
+    }).catch(imgErr);
   }
   function printPDF() {
     document.querySelectorAll('details.glossary').forEach(function (d) { d.open = false; });
@@ -1134,7 +1166,8 @@
       '<div class="row-actions" style="margin-top:0">' +
       '<button class="btn" id="gen">' + (hasAll ? '해석 다시 생성' : '해석 생성하기') + '</button>' +
       '<button class="btn ghost" id="share">링크 공유</button>' +
-      '<button class="btn ghost" id="img">이미지 저장</button>' +
+      '<button class="btn ghost" id="imgFull">전체 이미지 저장</button>' +
+      '<button class="btn ghost" id="img">요약 카드</button>' +
       '<button class="btn ghost" id="pdf">PDF로 저장</button>' +
       (readOnly ? '' : '<button class="btn ghost" id="home">저장된 목록</button>') +
       '</div>' + progressHTML('prog') + '<div id="aistat"></div>' +
@@ -1154,6 +1187,9 @@
     $('#gen').onclick = function () { generate(true); };
     $('#share').onclick = function () { shareUI('solo', { person: person, store: store }); };
     $('#img').onclick = function () { saveImage(function () { return Card.solo(R, person, store); }, 'saju_' + person.name + '.png'); };
+    $('#imgFull').onclick = function () {
+      saveFullImage(function () { return Card.soloFull(R, person, store, defs); }, 'saju_' + person.name + '_전체');
+    };
     $('#pdf').onclick = printPDF;
     wireChat('chat', function () { return I.chatSeed(I.brief(R), Object.keys(store).map(function (k) { return store[k]; }).join('\n\n')); });
 
@@ -1326,7 +1362,8 @@
       (many ? ' <span class="mono" style="opacity:.7">· 호출 ' + (G.pairs.length * pairBatches.length + I.GROUP_BATCHES.length) + '회</span>' : '') +
       '</button>' +
       '<button class="btn ghost" id="share">링크 공유</button>' +
-      '<button class="btn ghost" id="img">이미지 저장</button>' +
+      '<button class="btn ghost" id="imgFull">전체 이미지 저장</button>' +
+      '<button class="btn ghost" id="img">요약 카드</button>' +
       '<button class="btn ghost" id="pdf">PDF로 저장</button>' +
       (readOnly ? '' : '<button class="btn ghost" id="savem">기록 저장</button>' +
         '<button class="btn ghost" id="home">처음으로</button>') +
@@ -1406,10 +1443,16 @@
     $('#share').onclick = function () {
       shareUI('match', { list: list, stores: stores, groupStore: groupStore });
     };
+    var baseName = 'gunghap_' + list.map(function (p) { return p.name; }).join('_').slice(0, 40);
     $('#img').onclick = function () {
       saveImage(function () {
         return many ? Card.group(list, Rs, G) : Card.pair(Rs[0], Rs[1], G.pairs[0], list[0], list[1]);
-      }, 'gunghap_' + list.map(function (p) { return p.name; }).join('_').slice(0, 40) + '.png');
+      }, baseName + '.png');
+    };
+    $('#imgFull').onclick = function () {
+      saveFullImage(function () {
+        return Card.matchFull(list, Rs, G, stores, groupStore, pairDefs, many ? I.GROUP_SECTIONS : null);
+      }, baseName + '_전체');
     };
     $('#pdf').onclick = printPDF;
     app.querySelectorAll('[data-genpair]').forEach(function (b) {
