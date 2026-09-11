@@ -17,10 +17,10 @@
       keyUrl: null,
       note: '이 사이트에 연결된 Firebase 프로젝트로 Gemini를 호출합니다. 방문자는 아무것도 등록하지 않아도 바로 씁니다. 비용은 Google의 무료 한도 안에서 처리되며, 한도를 넘으면 잠시 뒤 다시 시도하면 됩니다.',
       defaults: [
-        { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash — 기본, 빠르고 똑똑함', free: true },
-        { id: 'gemini-flash-latest', label: 'Gemini Flash 최신 — 늘 최신 버전', free: true },
-        { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash — 이전 버전', free: true },
-        { id: 'gemini-flash-lite-latest', label: 'Gemini Flash-Lite — 가장 가볍고 빠름', free: true },
+        { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash — 기본, 무료 한도 넉넉함', free: true },
+        { id: 'gemini-flash-lite-latest', label: 'Gemini Flash-Lite — 가장 가볍고 한도 큼', free: true },
+        { id: 'gemini-flash-latest', label: 'Gemini Flash 최신', free: true },
+        { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash — 가장 똑똑함 (무료 하루 20회)', free: true },
         { id: 'gemini-pro-latest', label: 'Gemini Pro 최신 — 가장 깊게 (무료 한도 거의 없음)' }
       ]
     },
@@ -87,9 +87,10 @@
     var cur = ls(LS.prov);
     // 키를 넣은 적 없이 google 로 남아 있던 사용자는 설정 불필요 쪽으로 옮긴다
     if (!cur || (cur === 'google' && !ls(LS.key + 'google'))) lsSet(LS.prov, fallbackProvider());
-    // 서비스가 내린 구버전 Gemini 이름이 저장돼 있으면 비워 기본값으로 되돌린다
+    // 내려갔거나 무료 한도가 너무 작은 모델이 저장돼 있으면 비워 기본값으로 되돌린다
     ['firebase', 'google'].forEach(function (id) {
-      if (/^gemini-2\./.test(ls(LS.model + id))) lsSet(LS.model + id, null);
+      var m = ls(LS.model + id);
+      if (/^gemini-2\./.test(m) || m === 'gemini-3.6-flash') lsSet(LS.model + id, null);
       lsSet(LS.list + id, null);
     });
   })();
@@ -358,8 +359,17 @@
     if (!isFinite(s)) return 12000;
     return Math.min(45000, Math.max(2000, Math.ceil(s * 1000) + 1500));
   }
-  function viaFirebase(input, opts, attempt) {
-    attempt = attempt || 0;
+  /* 무료 한도는 모델마다 다르다 (최신 모델일수록 하루 허용량이 적다).
+     고른 모델이 한도에 걸리면 아래 순서대로 다음 모델로 넘어간다. */
+  var FB_CHAIN = ['gemini-3.5-flash', 'gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-3.6-flash'];
+  function fbChain() {
+    var sel = getModel('firebase');
+    return [sel].concat(FB_CHAIN.filter(function (m) { return m !== sel; }));
+  }
+
+  function viaFirebase(input, opts, st) {
+    st = st || { attempt: 0, mi: 0, chain: fbChain() };
+    var modelId = st.chain[st.mi] || st.chain[0];
     var contents = toMessages(input).map(function (m) {
       return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] };
     });
@@ -371,7 +381,7 @@
     return pace().then(getFbAI).then(function (h) {
       if (stopped) throw { code: 'cancelled', message: 'cancelled' };
       var gm = h.mod.getGenerativeModel(h.ai, {
-        model: getModel('firebase'),
+        model: modelId,
         generationConfig: { maxOutputTokens: 24000, temperature: 0.9 }
       });
       return gm.generateContentStream({ contents: contents });
@@ -389,15 +399,23 @@
       return { text: text, truncated: false, modelTierApplied: 'default' };
     }).catch(function (e) {
       var err = mapFbErr(e, text);
-      // 무료 한도는 분당 제한이고 서버가 대기 시간을 알려준다. 아직 글이 안 나왔으면 기다렸다 다시 건다.
-      if (err.code === 'rate_limited' && !text && !stopped && attempt < 4) {
+      if (err.code !== 'rate_limited' || text || stopped) throw err;
+
+      // 1) 한도는 모델마다 따로다. 남은 모델이 있으면 바로 그쪽으로 넘어간다.
+      if (st.mi < st.chain.length - 1) {
+        var next = st.chain[st.mi + 1];
+        if (opts.onNotice) { try { opts.onNotice(modelId + ' 한도 초과 — ' + next + '로 바꿔 다시 씁니다'); } catch (x) { } }
+        return viaFirebase(input, opts, { attempt: st.attempt, mi: st.mi + 1, chain: st.chain });
+      }
+      // 2) 전부 막혔으면 서버가 알려준 시간만큼 쉬고 처음 모델부터 다시 시도한다.
+      if (st.attempt < 2) {
         var wait = retryAfterMs(e);
         nextSlot = Date.now() + wait; // 대기 중에는 다른 호출도 나가지 않게 슬롯을 밀어 둔다
         if (opts.onNotice) { try { opts.onNotice('무료 한도에 걸려 ' + Math.round(wait / 1000) + '초 기다립니다'); } catch (x) { } }
         return new Promise(function (ok) { setTimeout(ok, wait); }).then(function () {
           if (stopped) throw { code: 'cancelled', message: 'cancelled' };
           if (opts.onNotice) { try { opts.onNotice(''); } catch (x) { } }
-          return viaFirebase(input, opts, attempt + 1);
+          return viaFirebase(input, opts, { attempt: st.attempt + 1, mi: 0, chain: st.chain });
         });
       }
       throw err;
