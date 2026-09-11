@@ -13,6 +13,16 @@
 
   var PROVIDERS = [
     {
+      id: 'firebase', label: 'Gemini', vendor: '무료 · 설정 불필요', free: true, keyless: true,
+      keyUrl: null,
+      note: '이 사이트에 연결된 Firebase 프로젝트로 Gemini를 호출합니다. 방문자는 아무것도 등록하지 않아도 바로 씁니다. 비용은 Google의 무료 한도 안에서 처리되며, 한도를 넘으면 잠시 뒤 다시 시도하면 됩니다.',
+      defaults: [
+        { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash — 빠르고 안정적', free: true },
+        { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro — 더 깊게 (한도 적음)', free: true },
+        { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite — 가장 가벼움', free: true }
+      ]
+    },
+    {
       id: 'anthropic', label: 'Claude', vendor: 'Anthropic', free: false,
       keyUrl: 'https://console.anthropic.com/settings/keys',
       note: 'Anthropic API 키는 유료(선불 크레딧)입니다. Claude를 무료로 쓰려면 claude.ai 아티팩트 버전에서 보세요 — 거기서는 보는 사람의 Claude 계정으로 키 없이 씁니다.',
@@ -23,9 +33,9 @@
       ]
     },
     {
-      id: 'google', label: 'Gemini', vendor: 'Google', free: true,
+      id: 'google', label: 'Gemini (내 키)', vendor: 'Google', free: true,
       keyUrl: 'https://aistudio.google.com/apikey',
-      note: 'Google AI Studio에서 무료 키를 받을 수 있습니다. Flash 계열은 무료 한도(분당·일일 요청 제한) 안에서 비용 없이 씁니다. 한도를 넘으면 잠시 기다렸다가 다시 하세요.',
+      note: '내 Google AI Studio 키로 직접 호출합니다. 위의 "설정 불필요"가 한도에 걸릴 때 쓰면 됩니다. Flash 계열은 무료 한도(분당·일일 요청 제한) 안에서 비용 없이 씁니다. 한도를 넘으면 잠시 기다렸다가 다시 하세요.',
       defaults: [
         { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash — 빠름', free: true },
         { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro — 더 깊게 (무료 한도 적음)', free: true },
@@ -58,15 +68,29 @@
 
   function ls(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
   function lsSet(k, v) { try { if (v === null || v === '') localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { } }
-  // 예전 저장값(Anthropic 단일) 이관
+
+  /** 키 없이 쓰는 Firebase AI Logic 을 쓸 수 있는 화면인가.
+      아티팩트(claude.ai) 안에서는 외부 모듈 로드가 막히므로 제외하고, 거기서는 sample 을 쓴다. */
+  function firebaseAvailable() {
+    return !!(global.MNG_FIREBASE && global.MNG_FIREBASE.apiKey && !(global.claude && global.claude.use));
+  }
+  function fallbackProvider() { return firebaseAvailable() ? 'firebase' : 'google'; }
+
+  // 예전 저장값 이관
   (function migrate() {
     var ok = ls('mng.ai.key'), om = ls('mng.ai.model');
     if (ok && !ls(LS.key + 'anthropic')) { lsSet(LS.key + 'anthropic', ok); lsSet('mng.ai.key', null); }
     if (om && !ls(LS.model + 'anthropic')) { lsSet(LS.model + 'anthropic', om); lsSet('mng.ai.model', null); }
-    if (!ls(LS.prov)) lsSet(LS.prov, ls(LS.key + 'anthropic') ? 'anthropic' : 'google');
+    var cur = ls(LS.prov);
+    // 키를 넣은 적 없이 google 로 남아 있던 사용자는 설정 불필요 쪽으로 옮긴다
+    if (!cur || (cur === 'google' && !ls(LS.key + 'google'))) lsSet(LS.prov, fallbackProvider());
   })();
 
-  function getProvider() { return ls(LS.prov) || 'google'; }
+  function getProvider() {
+    var p = ls(LS.prov) || fallbackProvider();
+    if (p === 'firebase' && !firebaseAvailable()) return 'google';
+    return p;
+  }
   function setProvider(id) { lsSet(LS.prov, P(id).id); }
   function getKey(id) { return ls(LS.key + (id || getProvider())); }
   function setKey(id, k) { lsSet(LS.key + id, (k || '').trim()); }
@@ -275,19 +299,95 @@
     });
   }
 
+  /* ---------- Firebase AI Logic (키 불필요) ---------- */
+  var SDK_URL = 'https://www.gstatic.com/firebasejs/12.3.0/';
+  var fbHandle = null;
+  function getFbAI() {
+    if (fbHandle) return fbHandle;
+    fbHandle = Promise.all([
+      import(SDK_URL + 'firebase-app.js'),
+      import(SDK_URL + 'firebase-ai.js')
+    ]).then(function (m) {
+      var appMod = m[0], aiMod = m[1], app;
+      try { app = appMod.getApp('mng-ai'); }
+      catch (e) { app = appMod.initializeApp(global.MNG_FIREBASE, 'mng-ai'); }
+      return { ai: aiMod.getAI(app, { backend: new aiMod.GoogleAIBackend() }), mod: aiMod };
+    }).catch(function (e) {
+      fbHandle = null;
+      throw { code: 'upstream_error', message: 'AI 모듈을 불러오지 못했습니다. 연결을 확인하세요.' };
+    });
+    return fbHandle;
+  }
+  function mapFbErr(e, text) {
+    if (e && e.code && /^(cancelled|empty_completion|refused|rate_limited|upstream_error|invalid_request|server_config)$/.test(e.code)) {
+      if (text && e.text === undefined && e.code !== 'refused') e.text = text;
+      return e;
+    }
+    var msg = String((e && (e.message || e)) || '');
+    if (/429|quota|RESOURCE_EXHAUSTED|rate limit/i.test(msg)) return { code: 'rate_limited', message: msg, text: text || undefined };
+    if (/SAFETY|blocked|PROHIBITED|block_reason/i.test(msg)) return { code: 'refused', message: msg };
+    if (/App ?Check|403|PERMISSION_DENIED|permission-denied|not-?enabled|SERVICE_DISABLED/i.test(msg)) {
+      return { code: 'server_config', message: msg.slice(0, 160), text: text || undefined };
+    }
+    if (/404|NOT_FOUND|not found/i.test(msg)) return { code: 'invalid_request', message: '이 모델은 쓸 수 없습니다. 다른 모델을 고르세요.' };
+    return { code: 'upstream_error', message: msg.slice(0, 160), text: text || undefined };
+  }
+  function viaFirebase(input, opts) {
+    var contents = toMessages(input).map(function (m) {
+      return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] };
+    });
+    var text = '', stopped = false;
+    if (opts.signal) {
+      if (opts.signal.aborted) return Promise.reject({ code: 'cancelled', message: 'cancelled' });
+      opts.signal.addEventListener('abort', function () { stopped = true; });
+    }
+    return getFbAI().then(function (h) {
+      var gm = h.mod.getGenerativeModel(h.ai, {
+        model: getModel('firebase'),
+        generationConfig: { maxOutputTokens: 24000, temperature: 0.9 }
+      });
+      return gm.generateContentStream({ contents: contents });
+    }).then(async function (res) {
+      for await (var chunk of res.stream) {
+        if (stopped) throw { code: 'cancelled', message: 'cancelled', text: text };
+        var t = '';
+        try { t = chunk.text() || ''; } catch (e) { t = ''; }
+        if (t) {
+          text += t;
+          if (opts.onText) { try { opts.onText({ text: text, delta: t }); } catch (e) { } }
+        }
+      }
+      if (!text.trim()) throw { code: 'empty_completion', message: 'empty' };
+      return { text: text, truncated: false, modelTierApplied: 'default' };
+    }).catch(function (e) { throw mapFbErr(e, text); });
+  }
+
   /* ---------- 공개 인터페이스 ---------- */
+  function ready(prov) {
+    prov = prov || getProvider();
+    if (prov === 'firebase') return firebaseAvailable();
+    return !!getKey(prov);
+  }
   function provider() {
     return sampleFn().then(function (s) {
       if (s) return 'sample';
-      if (getKey(getProvider())) return 'apikey';
-      return null;
+      var p = getProvider();
+      if (p === 'firebase' && firebaseAvailable()) return 'firebase';
+      return getKey(p) ? 'apikey' : null;
     });
   }
+  /** 방문자가 아무것도 설정하지 않아도 쓸 수 있는 환경인가 (자동 생성 여부 판단용) */
+  function isFree(prov) { return prov === 'sample' || prov === 'firebase'; }
+
   function generate(input, opts) {
     opts = opts || {};
     return sampleFn().then(function (s) {
       if (s) return s(input, sampleOpts(opts));
       var prov = getProvider();
+      if (prov === 'firebase') {
+        if (!firebaseAvailable()) return Promise.reject({ code: 'not_granted', message: 'no provider' });
+        return viaFirebase(input, opts);
+      }
       if (!getKey(prov)) return Promise.reject({ code: 'not_granted', message: 'no provider' });
       if (prov === 'anthropic') return viaAnthropic(input, opts);
       if (prov === 'google') return viaGoogle(input, opts);
@@ -298,6 +398,7 @@
   global.AI = {
     PROVIDERS: PROVIDERS,
     provider: provider, generate: generate, describe: describe,
+    isFree: isFree, ready: ready, firebaseAvailable: firebaseAvailable,
     getProvider: getProvider, setProvider: setProvider,
     getKey: getKey, setKey: setKey, getModel: getModel, setModel: setModel,
     listModels: listModels, cachedModels: cachedModels

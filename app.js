@@ -195,6 +195,7 @@
   var ERRCOPY = {
     not_granted: 'AI 해석이 꺼져 있습니다. 첫 화면의 "AI 해석 설정"에서 켜면 각 항목을 길게 씁니다.',
     bad_key: 'API 키가 틀렸거나 만료됐습니다. 첫 화면의 "AI 해석 설정"에서 다시 넣으세요.',
+    server_config: 'AI 서버 설정에 문제가 있습니다. 잠시 뒤 다시 시도하거나, "AI 해석 설정"에서 내 키를 넣어 쓰세요.',
     invalid_request: '요청 형식 오류입니다. 인원을 줄이거나 다시 시도하세요.',
     sampling_disabled: '이 계정에서는 AI 해석을 쓸 수 없습니다. 계산 결과는 그대로 볼 수 있습니다.',
     not_declared: 'AI 해석 기능이 이 페이지에 없습니다.',
@@ -421,7 +422,7 @@
   function aiOffNote(el) {
     if (!el) return;
     el.innerHTML = '<div class="banner"><span>AI 해석이 꺼져 있어 <b>계산 기반 핵심 판정</b>만 표시했습니다. ' +
-      '첫 화면의 “AI 해석 설정”에서 Claude 계정이나 API 키를 연결하면 각 항목을 길게 씁니다.</span>' +
+      '“AI 해석 설정”에서 켜면 각 항목을 길게 씁니다.</span>' +
       '<button class="btn sm" id="goai" style="margin-left:auto">설정으로</button></div>';
     var b = $('#goai', el);
     if (b) b.onclick = function () {
@@ -878,37 +879,47 @@
         return;
       }
       var cur = AIP.getProvider();
-      var PV = AIP.PROVIDERS.filter(function (x) { return x.id === cur; })[0] || AIP.PROVIDERS[0];
-      prov.textContent = p === 'apikey' ? '연결됨 · ' + AIP.describe() : '꺼져 있음 — 계산 결과와 핵심 판정만 표시됩니다';
+      var all = AIP.PROVIDERS.filter(function (x) { return x.id !== 'firebase' || AIP.firebaseAvailable(); });
+      var PV = all.filter(function (x) { return x.id === cur; })[0] || all[0];
+      var keyless = !!PV.keyless;
+      prov.textContent = keyless ? '켜져 있음 · ' + AIP.describe() + ' · 설정 불필요'
+        : (p === 'apikey' ? '켜져 있음 · ' + AIP.describe() : '꺼져 있음 — 계산 결과와 핵심 판정만 표시됩니다');
       body.innerHTML =
         '<div class="form-card">' +
-        '<div class="seg" id="provseg" style="flex-wrap:wrap">' + AIP.PROVIDERS.map(function (x) {
+        '<div class="seg" id="provseg" style="flex-wrap:wrap">' + all.map(function (x) {
           return '<button type="button" data-v="' + x.id + '" aria-pressed="' + (x.id === cur) + '" style="flex:1 1 45%">' +
-            esc(x.label) + ' <small style="opacity:.75">' + esc(x.vendor) + (x.free ? ' · 무료 가능' : '') + '</small></button>';
+            esc(x.label) + ' <small style="opacity:.75">' + esc(x.vendor) + '</small></button>';
         }).join('') + '</div>' +
-        '<p class="gnote">' + esc(PV.note) + ' <a href="' + PV.keyUrl + '" target="_blank" rel="noopener">키 만들기 ↗</a></p>' +
+        '<p class="gnote">' + esc(PV.note) +
+        (PV.keyUrl ? ' <a href="' + PV.keyUrl + '" target="_blank" rel="noopener">키 만들기 ↗</a>' : '') + '</p>' +
         '<div class="field-grid" style="margin-top:14px">' +
-        '<div class="f f-12"><label for="aikey">' + esc(PV.label) + ' API 키</label>' +
-        '<input id="aikey" type="password" autocomplete="off" placeholder="키 붙여넣기" value="' + esc(AIP.getKey(cur)) + '"></div>' +
-        '<div class="f f-12"><label for="aimodel">모델 · <button type="button" id="aireload" style="background:none;border:0;padding:0;color:var(--gold);cursor:pointer;font:inherit;text-transform:none;letter-spacing:0">목록 새로 고침</button></label>' +
-        '<select id="aimodel">' + modelOptions(AIP.cachedModels(cur), AIP.getModel(cur)) + '</select></div></div>' +
-        '<div class="row-actions"><button class="btn" id="aisave">저장</button>' +
-        (AIP.getKey(cur) ? '<button class="btn danger" id="aiclear">키 지우기</button>' : '') + '</div>' +
-        '<p style="font-size:13px;color:var(--fg-3);margin:14px 0 0;max-width:64ch">키는 이 브라우저에만 저장되고 서버로 가지 않습니다. ' +
-        '이 페이지에서 해당 회사 API로 직접 호출하며, 비용과 한도는 키 소유자 계정 기준입니다. 공유 링크에는 키가 절대 들어가지 않습니다.</p></div>';
+        (keyless ? '' :
+          '<div class="f f-12"><label for="aikey">' + esc(PV.label) + ' API 키</label>' +
+          '<input id="aikey" type="password" autocomplete="off" placeholder="키 붙여넣기" value="' + esc(AIP.getKey(cur)) + '"></div>') +
+        '<div class="f f-12"><label for="aimodel">모델' +
+        (keyless ? '' : ' · <button type="button" id="aireload" style="background:none;border:0;padding:0;color:var(--gold);cursor:pointer;font:inherit;text-transform:none;letter-spacing:0">목록 새로 고침</button>') +
+        '</label><select id="aimodel">' + modelOptions(AIP.cachedModels(cur), AIP.getModel(cur)) + '</select></div></div>' +
+        '<div class="row-actions"><button class="btn" id="aisave">' + (keyless ? '모델 저장' : '저장') + '</button>' +
+        (!keyless && AIP.getKey(cur) ? '<button class="btn danger" id="aiclear">키 지우기</button>' : '') + '</div>' +
+        '<p style="font-size:13px;color:var(--fg-3);margin:14px 0 0;max-width:64ch">' +
+        (keyless
+          ? '이 방식은 방문자가 아무것도 등록하지 않아도 동작합니다. 무료 한도를 넘어 오류가 나면 잠시 뒤 다시 시도하거나, 위에서 다른 공급자를 골라 내 키를 넣으면 됩니다.'
+          : '키는 이 브라우저에만 저장되고 서버로 가지 않습니다. 이 페이지에서 해당 회사 API로 직접 호출하며, 비용과 한도는 키 소유자 계정 기준입니다. 공유 링크에는 키가 절대 들어가지 않습니다.') +
+        '</p></div>';
       $('#provseg').onclick = function (e) {
         var b = e.target.closest('button[data-v]'); if (!b) return;
         AIP.setProvider(b.dataset.v); renderAISettings();
       };
       $('#aisave').onclick = function () {
-        AIP.setKey(cur, $('#aikey').value);
+        if (!keyless) AIP.setKey(cur, $('#aikey').value);
         AIP.setModel(cur, $('#aimodel').value);
-        toast(AIP.getKey(cur) ? 'AI 해석을 켰습니다 · ' + AIP.describe() : '키가 비어 있어 AI 해석은 꺼진 상태입니다');
+        toast(AIP.ready(cur) ? 'AI 해석을 켰습니다 · ' + AIP.describe() : '키가 비어 있어 AI 해석은 꺼진 상태입니다');
         renderAISettings();
       };
       var clr = $('#aiclear');
       if (clr) clr.onclick = function () { AIP.setKey(cur, ''); toast('키를 지웠습니다'); renderAISettings(); };
-      $('#aireload').onclick = function () {
+      var rl = $('#aireload');
+      if (rl) rl.onclick = function () {
         var k = $('#aikey').value.trim();
         if (k) AIP.setKey(cur, k);
         if (!AIP.getKey(cur) && cur !== 'openrouter') { toast('먼저 키를 넣으세요. 목록은 키로 조회합니다.'); return; }
@@ -1150,11 +1161,11 @@
         }
       });
     }
-    // 아티팩트(sample)에서는 동의 창이 뜨므로 바로 생성한다.
-    // API 키 모드는 키 소유자 돈이 나가므로 버튼을 눌러야 생성한다.
+    // 무료로 쓰는 환경(아티팩트 sample, 설정 불필요 Gemini)은 바로 생성한다.
+    // 내 API 키 모드는 키 소유자 돈이 나가므로 버튼을 눌러야 생성한다.
     AIP.provider().then(function (p) {
       if (!p) { aiOffNote($('#aistat')); return; }
-      if (p === 'sample' && !hasAll && !opts.noAuto) generate(false);
+      if (AIP.isFree(p) && !hasAll && !opts.noAuto) generate(false);
     });
   }
 
@@ -1482,7 +1493,7 @@
     AIP.provider().then(function (p) {
       if (!p) { aiOffNote($('#aistat')); return; }
       if (!anyMissing) return;
-      if (p === 'sample' && !many) { genAll(false); return; }
+      if (AIP.isFree(p) && !many) { genAll(false); return; }
       var pel = $('#prog');
       if (pel) pel.parentNode.insertBefore(el('<div class="banner">' +
         '<span>아래 계산 결과와 핵심 판정은 이미 완성입니다. <b>전체 해석 생성</b>을 누르면 쌍 ' + G.pairs.length +
