@@ -144,19 +144,21 @@
     { name: '신장·방광, 허리, 귀', weak: '허리와 무릎이 약하고 쉽게 지친다. 찬 데 오래 있으면 안 된다.', over: '몸이 차고 잘 붓는다. 밤에 활동하면 더 나빠진다.' }
   ];
   function health(R) {
-    var score = 78, notes = [], care = [];
+    var score = 84, notes = [], care = [];
     var mx = maxEl(R), mn = minEl(R);
     var pmx = pct(R, mx), pmn = pct(R, mn);
 
-    if (pmx >= 40) { score -= 14; notes.push(S.EL[mx] + '이 ' + pmx + '%로 크게 넘친다'); care.push({ organ: ORGAN[mx].name, why: ORGAN[mx].over }); }
-    else if (pmx >= 32) { score -= 7; notes.push(S.EL[mx] + '이 ' + pmx + '%로 치우친다'); care.push({ organ: ORGAN[mx].name, why: ORGAN[mx].over }); }
-    if (pmn <= 5) { score -= 12; notes.push(S.EL[mn] + '이 ' + pmn + '%로 거의 없다'); care.push({ organ: ORGAN[mn].name, why: ORGAN[mn].weak }); }
-    else if (pmn <= 10) { score -= 6; notes.push(S.EL[mn] + '이 ' + pmn + '%로 약하다'); care.push({ organ: ORGAN[mn].name, why: ORGAN[mn].weak }); }
-    if (pmx < 32 && pmn > 10) { score += 8; notes.push('오행이 고르게 퍼져 큰 구멍이 없다'); }
+    if (pmx >= 42) { score -= 11; notes.push(S.EL[mx] + '이 ' + pmx + '%로 크게 넘친다'); care.push({ organ: ORGAN[mx].name, why: ORGAN[mx].over }); }
+    else if (pmx >= 33) { score -= 6; notes.push(S.EL[mx] + '이 ' + pmx + '%로 치우친다'); care.push({ organ: ORGAN[mx].name, why: ORGAN[mx].over }); }
+    if (pmn <= 4) { score -= 10; notes.push(S.EL[mn] + '이 ' + pmn + '%로 거의 없다'); care.push({ organ: ORGAN[mn].name, why: ORGAN[mn].weak }); }
+    else if (pmn <= 9) { score -= 5; notes.push(S.EL[mn] + '이 ' + pmn + '%로 약하다'); care.push({ organ: ORGAN[mn].name, why: ORGAN[mn].weak }); }
+    if (pmx < 33 && pmn > 9) { score += 7; notes.push('오행이 고르게 퍼져 큰 구멍이 없다'); }
 
     var bad = R.relations.filter(function (r) { return r.good < 0; }).length;
-    if (bad) { score -= bad * 4; notes.push('원국에 충·형·해가 ' + bad + '개라 몸이 자주 신호를 보낸다'); }
+    if (bad) { score -= Math.min(9, bad * 3); notes.push('원국에 충·형·해가 ' + bad + '개라 몸이 자주 신호를 보낸다'); }
 
+    // 흉살은 "조심할 곳"을 알려 주는 쪽이 본질이다. 감점은 가볍게, 총량도 묶는다.
+    var hit = 0;
     [['급각살', '뼈·관절·다리를 다치기 쉽다. 운동 전 준비를 꼭 하라.'],
      ['단교관살', '넘어지고 삐끗하는 일이 반복된다.'],
      ['백호대살', '사고·수술·출혈수를 조심해야 한다. 정기 검진을 거르지 마라.'],
@@ -165,16 +167,21 @@
      ['양인살', '무리하다 한 번에 크게 다친다. 몸이 보내는 경고를 무시하지 마라.'],
      ['현침살', '눈·치아·바늘처럼 날카로운 것에 다치기 쉽다.']
     ].forEach(function (p) {
-      if (has(R, p[0])) { score -= 5; care.push({ organ: p[0], why: p[1] }); }
+      if (!has(R, p[0])) return;
+      care.push({ organ: p[0], why: p[1] });
+      if (p[0] !== '현침살') hit++;   // 현침살은 중립이라 점수는 깎지 않는다
     });
+    score -= Math.min(10, hit * 3);
+
     if (has(R, '천을귀인')) { score += 6; notes.push('천을귀인이 있어 큰일도 넘어간다'); }
     if (has(R, '천의성')) { score += 4; notes.push('천의성이 있어 좋은 의사를 만난다'); }
+    if (has(R, '천덕귀인') || has(R, '월덕귀인')) { score += 3; notes.push('천덕·월덕이 큰 사고를 비껴가게 한다'); }
     if (R.strength.label === '중화') { score += 6; notes.push('일간이 중화라 회복이 빠르다'); }
-    if (R.strength.label === '극신약') { score -= 8; notes.push('극신약이라 체력이 밑천이다'); }
-    if (R.strength.label === '극신강') { score -= 5; notes.push('극신강이라 무리하다 탈이 난다'); }
+    if (R.strength.label === '극신약') { score -= 7; notes.push('극신약이라 체력이 밑천이다'); }
+    if (R.strength.label === '극신강') { score -= 4; notes.push('극신강이라 무리하다 탈이 난다'); }
 
-    score = clamp(score, 15, 98);
-    var grade = score >= 80 ? '튼튼함' : score >= 65 ? '보통' : score >= 50 ? '관리 필요' : '주의';
+    score = clamp(score, 20, 98);
+    var grade = score >= 78 ? '튼튼함' : score >= 62 ? '보통' : score >= 48 ? '관리 필요' : '주의';
     // 중복 제거
     var seen = {}, uniq = [];
     care.forEach(function (c) { if (!seen[c.organ]) { seen[c.organ] = 1; uniq.push(c); } });
