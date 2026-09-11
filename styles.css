@@ -108,6 +108,7 @@ body::before {
 }
 
 .wrap { position: relative; z-index: 1; max-width: 1120px; margin: 0 auto; padding: 0 24px 96px; }
+@media (max-width: 600px) { .wrap { padding: 0 14px 72px; } }
 
 h1, h2, h3, h4 { font-family: var(--serif); font-weight: 700; text-wrap: balance; margin: 0; line-height: 1.3; }
 
@@ -151,6 +152,21 @@ nav.tabs button[aria-current="true"] { color: var(--gold); border-color: var(--g
   width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer; color: var(--fg-2); flex: none;
 }
 .icon-btn:hover { color: var(--gold); border-color: var(--gold-soft); }
+
+/* 좁은 화면 헤더: 한 줄에 들어가게 줄인다 (글자가 쪼개지지 않도록 nowrap) */
+.brand b, .brand span, nav.tabs button, .acct { white-space: nowrap; }
+.brand { flex: none; }
+@media (max-width: 600px) {
+  .top { gap: 8px; padding: 10px 0 9px; }
+  .brand { gap: 7px; }
+  .brand span { display: none; }
+  .brand b { font-size: 17px; }
+  .brand .seal { font-size: 17px; padding: 5px 6px 6px; }
+  nav.tabs { gap: 0; }
+  nav.tabs button { padding: 6px 11px; font-size: 13.5px; }
+  .icon-btn { width: 30px; height: 30px; font-size: 13px; }
+  .acct { max-width: 96px; overflow: hidden; text-overflow: ellipsis; padding: 5px 9px; font-size: 12px; margin-left: 0; }
+}
 
 /* ===== 히어로 ===== */
 .hero { padding: 46px 0 30px; border-bottom: 1px solid var(--line-soft); }
@@ -250,21 +266,6 @@ details.adv .field-grid { margin-top: 14px; }
   border-radius: 4px; overflow: hidden;
 }
 .plate-legend { display: none; font-size: 12px; color: var(--fg-3); margin: 8px 0 0; line-height: 1.5; }
-/* 좁은 화면: 행 라벨을 숨기고 4기둥이 화면 폭에 맞게 들어간다 */
-@media (max-width: 600px) {
-  .plate { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .plate .rowlab { display: none; }
-  .plate > div { padding: 6px 3px; }
-  .plate .colhead { font-size: 12.5px; }
-  .plate .god { font-size: 11px; }
-  .plate .char { padding: 3px 2px 6px; }
-  .plate .char .h { font-size: 30px; }
-  .plate .char .k { font-size: 9.5px; letter-spacing: 0; }
-  .plate .char .stripe { width: 22px; margin-top: 3px; }
-  .plate .hid { font-size: 11.5px; letter-spacing: .04em; }
-  .plate .stage { font-size: 10px; }
-  .plate-legend { display: block; }
-}
 .plate > div { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 9px 6px; text-align: center; }
 .plate > div:nth-child(5n) { border-right: 0; }
 .plate .rowlab {
@@ -286,6 +287,29 @@ details.adv .field-grid { margin-top: 14px; }
 .plate .stage { font-size: 11.5px; color: var(--fg-3); font-family: var(--mono); }
 .plate .cell-day { background: color-mix(in srgb, var(--gold) 7%, transparent); }
 .plate .dim { opacity: .34; }
+
+/* 좁은 화면: 행 라벨을 숨기고 네 기둥이 화면 폭에 그대로 들어간다.
+   (기본 규칙보다 뒤에 두어야 display:none 이 먹는다) */
+@media (max-width: 600px) {
+  .plate { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .plate .rowlab { display: none !important; }
+  /* 행 라벨은 숨기기만 하고 DOM 에는 남으므로 테두리용 nth-child(5n) 은 그대로 맞다 */
+  .plate > div { padding: 6px 2px; }
+  .plate .colhead { font-size: 12.5px; }
+  .plate .god { font-size: 11px; letter-spacing: -.03em; }
+  .plate .char { padding: 3px 1px 6px; }
+  .plate .char .h { font-size: 30px; }
+  .plate .char .k { font-size: 9.5px; letter-spacing: -.02em; }
+  .plate .char .stripe { width: 22px; margin-top: 3px; }
+  .plate .hid { font-size: 12px; letter-spacing: .02em; }
+  .plate .stage { font-size: 10px; }
+  .plate-legend { display: block; }
+}
+@media (max-width: 380px) {
+  .plate .char .h { font-size: 26px; }
+  .plate .god { font-size: 10px; }
+  .plate .char .k { font-size: 9px; }
+}
 
 /* ===== 데이터 패널 ===== */
 .panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 26px 34px; margin-top: 26px; }
