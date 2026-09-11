@@ -28,25 +28,29 @@
       S.GOD_GROUP[S.tenGod(R.dm, hid[hid.length - 1][0])]
     ];
   }
-  /** lo~hi 나이 구간에서 해당 십신이 처음 들어오는 대운 */
+  /** lo~hi 나이 구간에서 해당 십신이 처음 들어오는 대운.
+      대운은 10년을 덮으므로, 구간에 걸치기만 해도 잡되 시작 나이는 lo 아래로 내려가지 않게 한다. */
   function firstDw(R, groups, lo, hi) {
     var list = R.daewoon.list;
     for (var i = 0; i < list.length; i++) {
       var d = list[i];
       if (d.age + 9 < lo || d.age > hi) continue;
       var gs = dwGroups(R, d);
-      for (var k = 0; k < gs.length; k++) if (groups.indexOf(gs[k]) >= 0) return d;
+      for (var k = 0; k < gs.length; k++) {
+        if (groups.indexOf(gs[k]) >= 0) return { d: d, from: Math.max(d.age, lo) };
+      }
     }
     return null;
   }
   function yearOf(R, age) { return R.solar.y + Math.round(age); }
+  var THIS_YEAR = new Date().getFullYear();
 
   /* ---------- 첫 연애 ---------- */
   function firstLove(R) {
     var sg = spouseGroup(R), why = [];
-    var d = firstDw(R, [sg, '식상'], 14, 30);
-    var age = d ? d.age + 2 : 20;
-    if (d) why.push(d.age + '세 ' + S.STEM_H[d.s] + S.BRANCH_H[d.b] + ' 대운에 ' + sg + '·식상이 들어온다');
+    var f = firstDw(R, [sg, '식상'], 15, 30);
+    var age = f ? f.from + 1.5 : 21;
+    if (f) why.push(Math.round(f.d.age) + '세 ' + S.STEM_H[f.d.s] + S.BRANCH_H[f.d.b] + ' 대운에 ' + sg + '·식상이 들어온다');
     else why.push('20대 초반까지 ' + sg + ' 대운이 없다');
 
     if (has(R, '도화살')) { age -= 2.5; why.push('도화살이 있어 일찍 눈에 띈다'); }
@@ -56,16 +60,17 @@
     if (R.godCount.비겁 >= 3) { age -= 1; why.push('비겁이 많아 무리 속에서 일찍 엮인다'); }
     if (has(R, '고신살') || has(R, '과숙살')) { age += 1.5; why.push('고신·과숙이 있어 혼자 있는 시간이 길다'); }
 
-    age = clamp(age, 14, 33);
-    return { age: age, year: yearOf(R, age), why: why };
+    age = clamp(age, 15, 33);
+    var y = yearOf(R, age);
+    return { age: age, year: y, past: y < THIS_YEAR, why: why };
   }
 
   /* ---------- 결혼 ---------- */
   function marriage(R, fl) {
     var sg = spouseGroup(R), why = [];
-    var d = firstDw(R, [sg], 24, 42) || firstDw(R, ['관성', '재성'], 24, 42);
-    var age = d ? d.age + 3 : 31;
-    if (d) why.push(d.age + '세 ' + S.STEM_H[d.s] + S.BRANCH_H[d.b] + ' 대운이 배우자 자리를 건드린다');
+    var f = firstDw(R, [sg], 24, 42) || firstDw(R, ['관성', '재성'], 24, 42);
+    var age = f ? f.from + 2.5 : 32;
+    if (f) why.push(Math.round(f.d.age) + '세 ' + S.STEM_H[f.d.s] + S.BRANCH_H[f.d.b] + ' 대운이 배우자 자리를 건드린다');
     else why.push('40대 전까지 배우자성 대운이 뚜렷하지 않다');
 
     var c = R.godCount[sg];
@@ -94,7 +99,8 @@
     if (R.godCount.비겁 >= 4) will -= 6;
     will = clamp(will, 5, 97);
 
-    return { age: age, year: yearOf(R, age), why: why, will: will };
+    var y = yearOf(R, age);
+    return { age: age, year: y, past: y < THIS_YEAR, why: why, will: will };
   }
 
   /* ---------- 연애 횟수 ---------- */
@@ -131,11 +137,11 @@
   /* ---------- 취직 ---------- */
   function job(R) {
     var why = [];
-    var d = firstDw(R, ['관성'], 19, 34) || firstDw(R, ['식상', '재성'], 19, 34);
-    var age = d ? d.age + 2 : 26;
-    if (d) {
-      var gs = dwGroups(R, d).filter(function (g) { return ['관성', '식상', '재성'].indexOf(g) >= 0; })[0];
-      why.push(d.age + '세 ' + S.STEM_H[d.s] + S.BRANCH_H[d.b] + ' 대운에 ' + gs + '이 들어온다');
+    var f = firstDw(R, ['관성'], 22, 34) || firstDw(R, ['식상', '재성'], 22, 34);
+    var age = f ? f.from + 1.5 : 27;
+    if (f) {
+      var gs = dwGroups(R, f.d).filter(function (g) { return ['관성', '식상', '재성'].indexOf(g) >= 0; })[0];
+      why.push(Math.round(f.d.age) + '세 ' + S.STEM_H[f.d.s] + S.BRANCH_H[f.d.b] + ' 대운에 ' + gs + '이 들어온다');
     } else why.push('30대 전까지 관성·재성 대운이 약하다');
 
     var path;
@@ -147,8 +153,9 @@
     if (has(R, '역마살')) why.push('역마살이 있어 이동이 잦은 일이 맞는다');
     if (has(R, '문창귀인') || has(R, '학당귀인')) { why.push('문창·학당이 있어 시험 운이 따른다'); }
 
-    age = clamp(age, 19, 38);
-    return { age: age, year: yearOf(R, age), path: path, why: why };
+    age = clamp(age, 20, 40);
+    var y = yearOf(R, age);
+    return { age: age, year: y, past: y < THIS_YEAR, path: path, why: why };
   }
 
   /** 한 사람의 예측 묶음 */
@@ -168,15 +175,15 @@
 
   var CATS = [
     { id: 'marriage', title: '가장 먼저 결혼', unit: '세', get: function (p) { return p.marriage.age; }, asc: true,
-      sub: function (p) { return p.marriage.year + '년 · 결혼 의지 ' + p.marriage.will; } },
+      sub: function (p) { return p.marriage.year + '년' + (p.marriage.past ? '(지남)' : '') + ' · 결혼 의지 ' + p.marriage.will; } },
     { id: 'firstLove', title: '가장 먼저 연애', unit: '세', get: function (p) { return p.firstLove.age; }, asc: true,
-      sub: function (p) { return p.firstLove.year + '년쯤 첫 인연'; } },
+      sub: function (p) { return p.firstLove.year + '년' + (p.firstLove.past ? '쯤 이미 지남' : '쯤 첫 인연'); } },
     { id: 'count', title: '연애를 많이 하는 순', unit: '번', get: function (p) { return p.count.n; }, asc: false,
       sub: function (p) { return '결혼 전까지 약 ' + p.count.n + '번'; } },
     { id: 'duration', title: '한 사람을 오래 만나는 순', unit: '', get: function (p) { return p.duration.months; }, asc: false,
       fmt: function (p) { return p.duration.label; }, sub: function (p) { return '평균 ' + p.duration.label; } },
     { id: 'job', title: '가장 먼저 취직', unit: '세', get: function (p) { return p.job.age; }, asc: true,
-      sub: function (p) { return p.job.year + '년 · ' + p.job.path; } }
+      sub: function (p) { return p.job.year + '년' + (p.job.past ? '(지남)' : '') + ' · ' + p.job.path; } }
   ];
 
   /** 여러 사람을 항목별로 순위 매긴다 */
