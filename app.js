@@ -1311,9 +1311,27 @@
         '<button class="btn ghost" id="home">처음으로</button>') +
       '</div>' + progressHTML('prog') + '<div id="aistat"></div><div id="sharebox"></div>');
 
-    G.pairs.forEach(function (c) {
+    /* 쌍 탭 — 한 번에 한 쌍만 보고 이전/다음으로 넘긴다. 마지막 탭은 전체 종합 */
+    var tabKeys = G.pairs.map(function (c) { return pairKey(c.i, c.j); });
+    if (many) tabKeys.push('group');
+    if (tabKeys.length > 1) {
+      h.push('<nav class="pairtabs" id="pairtabs" aria-label="쌍 고르기">' +
+        G.pairs.map(function (c, k) {
+          return '<button type="button" data-pane="' + pairKey(c.i, c.j) + '" aria-current="' + (k === 0) + '">' +
+            '<span class="nm">' + nameTag(list[c.i], Rs[c.i]) + ' <i>↔</i> ' + nameTag(list[c.j], Rs[c.j]) + '</span>' +
+            '<span class="sc" style="color:' + scoreColor(c.total) + '">' + c.total + '</span>' +
+            '<span class="dot" data-dot="' + pairKey(c.i, c.j) + '"></span></button>';
+        }).join('') +
+        (many ? '<button type="button" data-pane="group" aria-current="false" class="all">' +
+          '<span class="nm">전체 종합 <i>·</i> ' + list.length + '명</span>' +
+          '<span class="dot" data-dot="group"></span></button>' : '') +
+        '</nav>');
+    }
+
+    G.pairs.forEach(function (c, k) {
       var key = pairKey(c.i, c.j);
       var st = stores[key] = stores[key] || {};
+      h.push('<div class="pane" data-pane-id="' + key + '"' + (k === 0 ? '' : ' hidden') + '>');
       h.push('<div class="pair-card" data-pair="' + key + '"><header>' +
         '<h3>' + nameTag(list[c.i], Rs[c.i]) + ' <span class="vs">↔</span> ' + nameTag(list[c.j], Rs[c.j]) + '</h3>' +
         '<button class="btn ghost sm" data-genpair="' + key + '" style="margin-left:auto">이 쌍만 생성</button>' +
@@ -1335,15 +1353,19 @@
         }).join('') : '<span class="chip">글자끼리 합충이 하나도 없음</span>') + '</div>' +
         sectionsHTML(pairDefs, st, 'sec-' + key, function (id) { return RU.pair(Rs[c.i], Rs[c.j], c, id); }) +
         '</div>');
+      if (tabKeys.length > 1) h.push(paneNavHTML(k, tabKeys));
+      h.push('</div>');
     });
-    h.push('</section>');
 
-    /* --- 전체 종합 --- */
+    /* --- 전체 종합 (마지막 탭) --- */
     if (many) {
-      h.push('<section class="block"><div class="sec-head"><h2>전체 종합</h2>' +
+      h.push('<div class="pane" data-pane-id="group" hidden>' +
+        '<div class="sec-head" style="margin-top:8px"><h2>전체 종합</h2>' +
         '<span class="note">' + list.length + '명 전부를 한 판으로</span></div>' +
-        sectionsHTML(I.GROUP_SECTIONS, groupStore, 'sec-group', function (id) { return RU.group(Rs, G, id); }) + '</section>');
+        sectionsHTML(I.GROUP_SECTIONS, groupStore, 'sec-group', function (id) { return RU.group(Rs, G, id); }) +
+        paneNavHTML(tabKeys.length - 1, tabKeys) + '</div>');
     }
+    h.push('</section>');
 
     h.push('<section class="block">' + chatHTML('chat', many ? [
       '이 중에 누가 제일 위험한 조합입니까?',
@@ -1372,6 +1394,39 @@
     app.querySelectorAll('[data-genpair]').forEach(function (b) {
       b.onclick = function () { genPair(b.dataset.genpair, true, true); };
     });
+
+    /* ---- 쌍 탭 ---- */
+    function showPane(id, scroll) {
+      app.querySelectorAll('.pane').forEach(function (p) { p.hidden = p.dataset.paneId !== id; });
+      app.querySelectorAll('#pairtabs button').forEach(function (b) {
+        b.setAttribute('aria-current', String(b.dataset.pane === id));
+      });
+      var t = app.querySelector('#pairtabs button[aria-current="true"]');
+      if (t && t.scrollIntoView) t.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+      if (scroll) {
+        var tabs = $('#pairtabs');
+        if (tabs) window.scrollTo({ top: tabs.getBoundingClientRect().top + window.pageYOffset - 70, behavior: 'smooth' });
+      }
+    }
+    var tabsEl = $('#pairtabs');
+    if (tabsEl) tabsEl.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-pane]'); if (!b) return;
+      showPane(b.dataset.pane, false);
+    });
+    app.querySelectorAll('[data-goto]').forEach(function (b) {
+      b.onclick = function () { showPane(b.dataset.goto, true); };
+    });
+    /** 탭에 "생성됨" 점을 켠다 */
+    function markTabs() {
+      G.pairs.forEach(function (c) {
+        var key = pairKey(c.i, c.j), st = stores[key] || {};
+        var d = app.querySelector('[data-dot="' + key + '"]');
+        if (d) d.classList.toggle('on', pairDefs.every(function (x) { return st[x.id]; }));
+      });
+      var gd = app.querySelector('[data-dot="group"]');
+      if (gd) gd.classList.toggle('on', I.GROUP_SECTIONS.every(function (x) { return groupStore[x.id]; }));
+    }
+    markTabs();
     if (!readOnly) {
       $('#home').onclick = function () { go('home'); };
       $('#savem').onclick = function () {
@@ -1419,6 +1474,7 @@
       var st = stores[key];
       var batches = pairBatchList(key, force);
       if (!batches.length) return Promise.resolve();
+      showPane(key, false); // 지금 쓰고 있는 쌍을 보여준다
       if (standalone) {
         anyFailed = 0;
         Loader.show({
@@ -1433,9 +1489,9 @@
         rules: function (id) { return RU.pair(Rs[c.i], Rs[c.j], c, id); },
         onNoAI: function () { Loader.hide(); aiOffNote($('#aistat')); },
         buildPrompt: function (bids) { return I.pairPrompt(Rs[c.i], Rs[c.j], c, bids); },
-        onBatch: persistMatch,
+        onBatch: function () { persistMatch(); markTabs(); },
         onDone: function (r) {
-          persistMatch();
+          persistMatch(); markTabs();
           if (r && r.failed) anyFailed += r.failed;
           if (standalone) finishLoader(c.a + ' ↔ ' + c.b + ' 궁합 해석이 끝났습니다');
         }
@@ -1455,14 +1511,15 @@
     function genGroup(force) {
       var batches = groupBatchList(force);
       if (!batches.length) return Promise.resolve();
+      showPane('group', false);
       return runBatches({
         batches: batches, defs: I.GROUP_SECTIONS, store: groupStore, refresh: !!force,
         root: $('#sec-group'), progressEl: $('#prog'),
         rules: function (id) { return RU.group(Rs, G, id); },
         onNoAI: function () { Loader.hide(); aiOffNote($('#aistat')); },
         buildPrompt: function (bids) { return I.groupPrompt(Rs, G, bids); },
-        onBatch: persistMatch,
-        onDone: function (r) { persistMatch(); if (r && r.failed) anyFailed += r.failed; }
+        onBatch: function () { persistMatch(); markTabs(); },
+        onDone: function (r) { persistMatch(); markTabs(); if (r && r.failed) anyFailed += r.failed; }
       });
     }
     function genAll(force) {
@@ -1504,6 +1561,17 @@
         '개를 하나씩 길게 쓰고' + (many ? ' 마지막에 ' + list.length + '명 전체를 종합합니다.' : ' 끝냅니다.') +
         ' 한 쌍만 먼저 보려면 카드의 “이 쌍만 생성”을 누르세요.</span></div>'), pel.nextSibling);
     });
+  }
+
+  function paneNavHTML(k, keys) {
+    return '<div class="pane-nav">' +
+      (k > 0 ? '<button class="btn ghost sm" data-goto="' + keys[k - 1] + '">← 이전 쌍</button>' : '<span></span>') +
+      '<span class="mono">' + (k + 1) + ' / ' + keys.length + '</span>' +
+      (k < keys.length - 1
+        ? '<button class="btn ghost sm" data-goto="' + keys[k + 1] + '">' +
+          (keys[k + 1] === 'group' ? '전체 종합 보기 →' : '다음 쌍 →') + '</button>'
+        : '<span></span>') +
+      '</div>';
   }
 
   function scoreColor(v) {
