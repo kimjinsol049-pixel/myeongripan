@@ -580,6 +580,8 @@
     else if (mode === 'none') lst = jdUT + tz / 24;
     else lst = jdUT + tz / 24 - ((tz * 15 - 127.5) * 4) / 1440;
 
+    // 분 단위로 반올림 — 정각 경계(13:00 등)에서 부동소수점 오차로 시지가 한 칸 밀리는 것을 막는다
+    lst = Math.round(lst * 1440) / 1440;
     var dayNum = Math.floor(lst + 0.5);
     var hourFrac = (lst + 0.5 - dayNum) * 24;
     var hourBranch = Math.floor(mod(hourFrac + 1, 24) / 2);
