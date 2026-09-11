@@ -1239,6 +1239,10 @@
       (R.unknownTime ? unknownTimeNote(null) : '') +
       plateHTML(R) + panelsHTML(R) + GL.sectionHTML() + '</section>');
 
+    h.push('<section class="block"><div class="sec-head"><h2>올해 · 연애 · 건강 · 이미지</h2>' +
+      '<span class="note">계산에서 바로 나온 값입니다. 재미로 보세요</span></div>' +
+      personaHTML(R, null) + '</section>');
+
     h.push('<section class="block"><div class="sec-head"><h2>해석</h2>' +
       '<span class="note">총평 · 심리 · 재물 · 금전 · 사업 · 직업 · 인연 · 연애결혼 · 전생 10개 항목</span></div>' +
       '<div class="row-actions" style="margin-top:0">' +
@@ -1723,6 +1727,70 @@
     });
   }
 
+  /* ---------- 캐릭터 (올해 연애·스타일·건강·이미지·옷·동물) ---------- */
+  function personaHTML(R, who) {
+    if (!window.Persona) return '';
+    var P = Persona.of(R);
+    var nm = who ? esc(who) + ' · ' : '';
+    var h = ['<div class="persona">'];
+
+    h.push('<div class="pz-animal"><span class="em">' + P.animal.emoji + '</span>' +
+      '<div><h4>' + nm + '닮은 동물 — ' + esc(P.animal.name) + '</h4>' +
+      '<p>' + esc(P.animal.desc) + ' ' + esc(P.animal.extra) + '</p>' +
+      '<span class="mono">일간 ' + S.STEM_H[R.dm] + ' 기준 · 띠는 ' + esc(P.animal.zodiac) + '띠</span></div></div>');
+
+    h.push('<div class="pz-grid">');
+
+    // 올해 연애
+    h.push('<div class="pz"><h4>' + P.thisYear.year + '년 연애 시기</h4>' +
+      '<p class="pz-lead">세운 ' + esc(P.thisYear.gz) + '</p>' +
+      '<ul>' + P.thisYear.note.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>' +
+      (P.thisYear.months.length
+        ? '<div class="pz-months">' + P.thisYear.months.map(function (m) {
+          return '<span class="mchip"><b>' + esc(m.m) + '</b><i>' + esc(m.gz) + '</i>' +
+            '<em>' + esc(m.why.join(', ')) + '</em></span>';
+        }).join('') + '</div>'
+        : '<p class="pz-none">올해는 특별히 도드라지는 달이 없다. 인연보다 자기 일에 쓰는 해다.</p>') +
+      '</div>');
+
+    // 연애 스타일
+    h.push('<div class="pz"><h4>연애 스타일</h4>' +
+      '<p class="pz-lead">일지 ' + esc(P.loveStyle.god) + '</p>' +
+      '<p>' + esc(P.loveStyle.main) + '</p>' +
+      (P.loveStyle.extra.length ? '<ul>' + P.loveStyle.extra.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
+      '</div>');
+
+    // 만나는 사람
+    h.push('<div class="pz"><h4>만나는 사람 특징</h4>' +
+      '<p class="pz-lead el-' + P.partner.el + '">' + S.EL_H[P.partner.el] + ' ' + S.EL[P.partner.el] + ' 기운</p>' +
+      P.partner.lines.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</div>');
+
+    // 건강운
+    h.push('<div class="pz"><h4>건강운 <span class="hscore">' + P.health.score + '점 · ' + esc(P.health.grade) + '</span></h4>' +
+      '<div class="gauge"><i style="width:' + P.health.score + '%;background:' + scoreColor(P.health.score) + '"></i></div>' +
+      (P.health.notes.length ? '<ul>' + P.health.notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>' : '') +
+      (P.health.care.length
+        ? '<div class="pz-care">' + P.health.care.map(function (c) {
+          return '<div><b>' + esc(c.organ) + '</b> ' + esc(c.why) + '</div>';
+        }).join('') + '</div>'
+        : '<p class="pz-none">특별히 약한 곳이 없다.</p>') +
+      '<p class="pz-tip">용신 ' + esc(P.health.best) + ' 기운을 채우는 생활이 몸에도 좋다.</p></div>');
+
+    // 이미지
+    h.push('<div class="pz"><h4>남에게 보이는 이미지</h4>' +
+      P.image.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('') + '</div>');
+
+    // 옷
+    h.push('<div class="pz"><h4>어울리는 옷</h4>' +
+      '<p class="pz-lead">' + esc(P.fashion.color) + '</p>' +
+      '<p>' + esc(P.fashion.item) + '</p>' +
+      '<p class="pz-avoid">피할 것 — ' + esc(P.fashion.avoidColor) + ' 계열, ' + esc(P.fashion.avoid) + '</p>' +
+      '<p class="pz-tip">' + esc(P.fashion.why) + '</p></div>');
+
+    h.push('</div></div>');
+    return h.join('');
+  }
+
   /* ---------- 재미로 보는 순위 ---------- */
   var MEDAL = ['🥇', '🥈', '🥉'];
   function fortuneHTML(list, Rs) {
@@ -1743,7 +1811,12 @@
         }).join('') + '</ol></div>';
     }).join('') + '</div>');
 
-    h.push('<details class="adv" style="margin-top:18px"><summary>한 사람씩 자세히 · 왜 그렇게 봤는지</summary>' +
+    h.push('<details class="adv" style="margin-top:18px"><summary>한 사람씩 — 올해 연애·스타일·건강·이미지·옷·닮은 동물</summary>' +
+      list.map(function (p, i) {
+        return '<div class="fun-person">' + personaHTML(Rs[i], p.name) + '</div>';
+      }).join('') + '</details>');
+
+    h.push('<details class="adv" style="margin-top:12px"><summary>순위를 왜 그렇게 봤는지</summary>' +
       F.profiles.map(function (p, i) {
         function why(a) { return a.length ? '<div class="fw">' + a.map(function (x) { return esc(x); }).join(' · ') + '</div>' : ''; }
         return '<div class="fun-person"><h4>' + nameTag(list[i], Rs[i]) +
@@ -1755,6 +1828,7 @@
           '<dt>연애 횟수</dt><dd><b>결혼 전까지 약 ' + p.count.n + '번</b>' + why(p.count.why) + '</dd>' +
           '<dt>연애 기간</dt><dd><b>평균 ' + esc(p.duration.label) + '</b>' + why(p.duration.why) + '</dd>' +
           '<dt>취직</dt><dd><b>' + p.job.age + '세</b> (' + p.job.year + '년쯤) · ' + esc(p.job.path) + why(p.job.why) + '</dd>' +
+          '<dt>건강운</dt><dd><b>' + p.health.score + '점 · ' + esc(p.health.grade) + '</b>' + why(p.health.notes) + '</dd>' +
           '</dl></div>';
       }).join('') + '</details>');
 

@@ -612,6 +612,43 @@ body.locked { overflow: hidden; }
   font-size: 14px; font-weight: 500; z-index: 100; box-shadow: var(--shadow);
 }
 
+/* ===== 캐릭터 (올해·연애·건강·이미지·옷·동물) ===== */
+.pz-animal {
+  display: flex; gap: 16px; align-items: flex-start;
+  border: 1px solid var(--gold-soft); border-radius: 6px;
+  background: color-mix(in srgb, var(--gold) 7%, var(--bg-2));
+  padding: 16px 18px; margin-bottom: 16px;
+}
+.pz-animal .em { font-size: 44px; line-height: 1; flex: none; font-family: "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif; }
+.pz-animal h4 { font-size: 18px; margin-bottom: 6px; color: var(--gold); }
+.pz-animal p { font-size: 14.5px; color: var(--fg-2); margin: 0 0 6px; max-width: 66ch; }
+.pz-animal .mono { font-family: var(--mono); font-size: 11.5px; color: var(--fg-3); }
+
+.pz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.pz { border: 1px solid var(--line); border-radius: 6px; background: var(--bg-2); padding: 15px 16px; }
+.pz h4 { font-size: 15.5px; margin-bottom: 9px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pz .hscore { font-family: var(--mono); font-size: 13px; color: var(--gold); font-weight: 400; }
+.pz p { font-size: 14px; color: var(--fg-2); margin: 0 0 7px; }
+.pz p:last-child { margin-bottom: 0; }
+.pz .pz-lead { font-family: var(--mono); font-size: 12px; color: var(--gold); letter-spacing: .06em; }
+.pz ul { margin: 6px 0 0; padding-left: 1.1em; font-size: 13.5px; color: var(--fg-2); }
+.pz li { margin-bottom: 3px; }
+.pz .pz-none { font-size: 13.5px; color: var(--fg-3); font-style: italic; }
+.pz .pz-tip { font-size: 12.5px; color: var(--fg-3); border-top: 1px solid var(--line-soft); padding-top: 8px; margin-top: 9px; }
+.pz .pz-avoid { font-size: 13px; color: var(--bad); }
+.pz .pz-care { display: grid; gap: 6px; margin-top: 9px; }
+.pz .pz-care > div { font-size: 13px; color: var(--fg-2); border-left: 2px solid var(--bad); padding-left: 9px; }
+.pz .pz-care b { color: var(--fg); }
+.pz-months { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.mchip {
+  border: 1px solid var(--gold-soft); border-radius: 5px; padding: 6px 9px;
+  background: color-mix(in srgb, var(--gold) 8%, transparent);
+  display: flex; flex-direction: column; gap: 1px;
+}
+.mchip b { font-size: 14px; color: var(--gold); }
+.mchip i { font-family: var(--hanja); font-style: normal; font-size: 13px; color: var(--fg-2); }
+.mchip em { font-style: normal; font-size: 11px; color: var(--fg-3); }
+
 /* ===== 재미로 보는 순위 ===== */
 .fun-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 .fun-card { border: 1px solid var(--line); border-radius: 6px; background: var(--bg-2); padding: 15px 16px; }

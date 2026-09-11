@@ -169,7 +169,8 @@
       marriage: mg,
       count: loveCount(R),
       duration: loveDuration(R),
-      job: job(R)
+      job: job(R),
+      health: global.Persona ? global.Persona.health(R) : { score: 50, grade: '보통', care: [] }
     };
   }
 
@@ -183,7 +184,9 @@
     { id: 'duration', title: '한 사람을 오래 만나는 순', unit: '', get: function (p) { return p.duration.months; }, asc: false,
       fmt: function (p) { return p.duration.label; }, sub: function (p) { return '평균 ' + p.duration.label; } },
     { id: 'job', title: '가장 먼저 취직', unit: '세', get: function (p) { return p.job.age; }, asc: true,
-      sub: function (p) { return p.job.year + '년' + (p.job.past ? '(지남)' : '') + ' · ' + p.job.path; } }
+      sub: function (p) { return p.job.year + '년' + (p.job.past ? '(지남)' : '') + ' · ' + p.job.path; } },
+    { id: 'health', title: '건강운이 좋은 순', unit: '점', get: function (p) { return p.health.score; }, asc: false,
+      sub: function (p) { return p.health.grade + (p.health.care[0] ? ' · ' + p.health.care[0].organ + ' 주의' : ' · 특별히 약한 곳 없음'); } }
   ];
 
   /** 여러 사람을 항목별로 순위 매긴다 */
