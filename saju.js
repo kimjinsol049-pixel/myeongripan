@@ -641,6 +641,10 @@
     var xun = Math.floor(dIdx / 10);
     var gongB = [mod(10 - 2 * xun, 12), mod(11 - 2 * xun, 12)];
 
+    // 시각을 모르면 일주가 야자시(23시 이후) 때문에 하루 달라질 수 있다.
+    // 그 경우 일주·시주 전체가 바뀌므로 어느 정도 확실한지 알려 준다.
+    var dayAmbiguous = unknown;
+
     // 격국 (월지 본기 십신, 월지가 비겁이면 일지/투간 보조)
     var monthGod = pillars[1].branchGod;
     var gyeokMap = {
@@ -671,6 +675,7 @@
       lunar: lunarInfo,
       dst: !!dst, tzOffset: tz, eot: eot, timeMode: mode, lon: lon,
       unknownTime: unknown,
+      dayAmbiguous: dayAmbiguous,
       hourFrac: hourFrac,
       lam: lam,
       edgeMinutes: edgeMin,
@@ -698,8 +703,8 @@
   function internalRelations(pillars) {
     var out = [];
     var tags = ['년', '월', '일', '시'];
-    var i, j;
-    for (i = 0; i < 4; i++) for (j = i + 1; j < 4; j++) {
+    var n = pillars.length, i, j;   // 출생 시각을 모르면 세 기둥만 온다
+    for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) {
       var a = pillars[i], b = pillars[j];
       var h = stemHap(a.s, b.s);
       if (h >= 0) out.push({ kind: '천간합', a: tags[i] + '간', b: tags[j] + '간', text: STEM_H[a.s] + STEM_H[b.s] + ' 합 → ' + EL_H[h], good: 1 });

@@ -452,7 +452,17 @@
         }
       };
 
-      var parts = shinsalParts(R);
+      var parts = [];
+      if (R.unknownTime) {
+        parts.push(
+          { t: 'eyebrow', s: '출생 시각 모름 — 정확하지 않을 수 있음', color: ELC[2] },
+          { t: 'p', s: '태어난 시각이 없어 시주(時柱)를 세우지 못했습니다. 년·월·일 세 기둥만으로 본 결과라 실제와 다를 수 있습니다.', size: 23, lh: 36, color: C.fg2 },
+          { t: 'p', s: '믿어도 되는 것 — 일간, 세 기둥, 격국과 월령, 대운의 흐름', bullet: true, size: 22, lh: 34, after: 2 },
+          { t: 'p', s: '달라질 수 있는 것 — 오행 비율, 일간 강약, 용신, 자식운·말년운. 밤 11시~12시 출생이면 일주까지 하루 달라집니다.', bullet: true, size: 22, lh: 34, after: 2 },
+          { t: 'gap', h: 12 }, { t: 'rule' }
+        );
+      }
+      parts = parts.concat(shinsalParts(R));
       parts.push({ t: 'gap', h: 10 }, { t: 'rule' });
       (defs || []).forEach(function (d) {
         var body = (store && store[d.id]) || (global.Rules ? global.Rules.solo(R, d.id) : '');
@@ -488,6 +498,14 @@
       };
 
       var parts = [];
+      var noTime = list.filter(function (p, i) { return Rs[i].unknownTime; }).map(function (p) { return p.name; });
+      if (noTime.length) {
+        parts.push(
+          { t: 'eyebrow', s: '출생 시각 모름 — 정확하지 않을 수 있음', color: ELC[2] },
+          { t: 'p', s: noTime.join(', ') + '의 태어난 시각이 없어 시주를 세우지 못했습니다. 년·월·일 세 기둥만으로 본 궁합이라 점수와 해석이 실제와 다를 수 있습니다.', size: 23, lh: 36, color: C.fg2 },
+          { t: 'gap', h: 12 }, { t: 'rule' }
+        );
+      }
       G.pairs.forEach(function (c) {
         var key = c.i + '-' + c.j, st = stores[key] || {};
         parts.push({ t: 'gap', h: 12 }, { t: 'rule' });

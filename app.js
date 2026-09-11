@@ -312,9 +312,23 @@
     });
     h.push('</div></div>');
     h.push('<p class="plate-legend">줄 순서: 천간 십신 → 천간 → 지지 → 지지 십신 → 지장간 → 십이운성. 기둥은 오른쪽부터 년·월·일·시.</p>');
-    if (R.unknownTime) h.push('<p style="font-size:13px;color:var(--fg-3);margin:9px 0 0">' +
-      '출생 시각을 모르므로 시주는 회색 처리하고 오행·십신·합충 계산에서 제외했습니다. 나머지 세 기둥으로 봅니다.</p>');
     return h.join('');
+  }
+
+  /** 출생 시각을 모를 때 띄우는 경고. 무엇이 되고 무엇이 안 되는지 분명히 적는다. */
+  function unknownTimeNote(names) {
+    var who = names ? esc(names) + '은(는) ' : '';
+    return '<div class="warn-box"><b>⚠ 출생 시각을 몰라 정확하지 않을 수 있습니다</b>' +
+      '<p>' + jo(who + '태어난 시각이 없어 <b>시주(時柱)를 세우지 못했습니다.</b> 년·월·일 세 기둥만으로 본 결과라 실제와 다를 수 있습니다.</p>') +
+      '<div class="wb-cols">' +
+      '<div><span class="ok">그대로 믿어도 되는 것</span>' +
+      '<ul><li>일간 — 나 자신의 기본 성질</li><li>년주·월주·일주 세 기둥</li><li>격국과 월령(태어난 달의 기운)</li><li>대운의 흐름과 시기</li></ul></div>' +
+      '<div><span class="no">달라질 수 있는 것</span>' +
+      '<ul><li>오행 비율과 일간 강약 — 시주 두 글자(전체의 25%)가 빠졌습니다</li><li>용신·희신·기신</li><li>자식운·말년운 — 시주가 맡는 영역입니다</li><li>시주와 얽히는 신살·합충</li>' +
+      '<li><b>밤 11시~12시 출생이면 일주까지 하루 달라집니다</b></li></ul></div>' +
+      '</div>' +
+      '<p class="wb-tip">시각을 알게 되면 다시 넣어 주세요. 훨씬 정확해집니다. ' +
+      '모를 때는 <b>태어난 때가 낮인지 밤인지</b>만 알아도 도움이 되니, 어른께 여쭤 볼 값어치가 있습니다.</p></div>';
   }
 
   function elbarHTML(scores) {
@@ -680,7 +694,8 @@
         return '<div class="person" data-open="' + p.id + '" role="button" tabindex="0">' +
           '<button class="x" data-del="' + p.id + '" title="삭제" aria-label="삭제">×</button>' +
           '<div class="nm">' + nameTag(p, R) + ' <em>' + (p.gender === 'M' ? '남' : '여') + '</em></div>' +
-          '<div class="dt">' + esc(personLabel(p)) + '</div>' +
+          '<div class="dt">' + esc(personLabel(p)) +
+          (p.unknown ? ' <span class="notime">시각모름</span>' : '') + '</div>' +
           (R ? '<div class="gzrow">' + R.pillars.map(function (q) { return S.gz(q.s, q.b); }).join(' ') + '</div>' +
             '<div class="dt">' + esc(R.gyeok + ' · ' + R.strength.label + ' · 용신 ' + S.EL[R.yongsin.main]) + '</div>'
             : '<div class="dt" style="color:var(--bad)">계산 실패</div>') +
@@ -1082,6 +1097,11 @@
       '<button type="button" data-v="0" aria-pressed="' + (!v.unknown) + '">안다</button>' +
       '<button type="button" data-v="1" aria-pressed="' + (!!v.unknown) + '">모른다</button></div></div>' +
 
+      '<div class="f f-12 notime-hint' + (v.unknown ? '' : ' hidden') + '">' +
+      '<span style="font-size:13px;color:var(--warn);line-height:1.6">' +
+      '시각 없이도 사주가 나옵니다. 다만 <b>시주(時柱)를 못 세워 정확하지 않을 수 있습니다</b> — ' +
+      '오행 비율·일간 강약·용신이 달라질 수 있고, 자식운·말년운은 볼 수 없습니다. 결과 화면에 자세히 안내합니다.</span></div>' +
+
       '</div>' +
       '<details class="adv"><summary>고급 설정 — 시간 보정·야자시·출생지 경도</summary><div class="field-grid">' +
       '<div class="f f-12"><label>시간 보정</label><div class="seg" data-seg="timeMode">' +
@@ -1153,6 +1173,8 @@
         if (s.dataset.seg === 'unknown') {
           var on = b.dataset.v === '1';
           card.querySelectorAll('[data-k="hour"],[data-k="minute"]').forEach(function (i) { i.disabled = on; });
+          var hint = card.querySelector('.notime-hint');
+          if (hint) hint.classList.toggle('hidden', !on);
         }
       });
     });
@@ -1210,7 +1232,9 @@
       '<p class="mono" style="font-size:14px">' + esc(personLabel(person)) +
       ' · ' + R.pillars.map(function (q) { return S.gz(q.s, q.b); }).join(' ') + '</p></div>');
 
-    h.push('<section class="block">' + plateHTML(R) + panelsHTML(R) + GL.sectionHTML() + '</section>');
+    h.push('<section class="block">' +
+      (R.unknownTime ? unknownTimeNote(null) : '') +
+      plateHTML(R) + panelsHTML(R) + GL.sectionHTML() + '</section>');
 
     h.push('<section class="block"><div class="sec-head"><h2>해석</h2>' +
       '<span class="note">총평 · 심리 · 재물 · 금전 · 사업 · 직업 · 인연 · 연애결혼 · 전생 10개 항목</span></div>' +
@@ -1307,7 +1331,8 @@
         var R = null; try { R = computeOf(p); } catch (e) { }
         return '<div class="person" role="button" tabindex="0" data-pick="' + p.id + '" aria-pressed="' + (matchPick.indexOf(p.id) >= 0) + '">' +
           '<div class="nm">' + nameTag(p, R) + ' <em>' + (p.gender === 'M' ? '남' : '여') + '</em></div>' +
-          '<div class="dt">' + esc(personLabel(p)) + '</div>' +
+          '<div class="dt">' + esc(personLabel(p)) +
+          (p.unknown ? ' <span class="notime">시각모름</span>' : '') + '</div>' +
           (R ? '<div class="gzrow">' + R.pillars.map(function (q) { return S.gz(q.s, q.b); }).join(' ') + '</div>' : '') +
           '<div class="pick">' + (matchPick.indexOf(p.id) >= 0 ? '선택됨' : '&nbsp;') + '</div></div>';
       }).join('') + '</div>');
@@ -1388,8 +1413,10 @@
       '점 · 최저 ' + esc(G.worst.a + ' ↔ ' + G.worst.b) + ' ' + G.worst.total + '점</p></div>');
 
     /* --- 계산 요약 --- */
+    var noTime = list.filter(function (p, i) { return Rs[i].unknownTime; }).map(function (p) { return p.name; });
     h.push('<section class="block"><div class="sec-head"><h2>계산 요약</h2>' +
-      '<span class="note">아래 숫자는 명식 계산에서 바로 나온 값입니다</span></div>');
+      '<span class="note">아래 숫자는 명식 계산에서 바로 나온 값입니다</span></div>' +
+      (noTime.length ? unknownTimeNote(noTime.join(', ')) : ''));
 
     if (many) {
       h.push('<div class="panel" style="margin-bottom:24px"><h3>쌍별 종합 점수</h3><div style="overflow-x:auto">' +

@@ -54,8 +54,14 @@
     L.push('[' + (i.name || '본인') + ' 명식]');
     L.push('성별: ' + (i.gender === 'M' ? '남자' : '여자'));
     L.push('양력 생일: ' + R.solar.y + '년 ' + R.solar.m + '월 ' + R.solar.d + '일' +
-      (R.unknownTime ? ' (출생시각 모름 — 시주는 무시하고 해석할 것)'
-        : ' ' + pad(i.hour) + ':' + pad(i.minute || 0)));
+      (R.unknownTime ? ' (출생시각 모름)' : ' ' + pad(i.hour) + ':' + pad(i.minute || 0)));
+    if (R.unknownTime) {
+      L.push('※ 출생 시각을 모른다. 시주(時柱)가 없으므로 년·월·일 세 기둥만으로 해석한다.');
+      L.push('  - 아래 시주 글자는 정오 기준 임시값이니 절대 해석에 쓰지 마라.');
+      L.push('  - 오행 비율·일간 강약·용신은 시주 두 글자가 빠진 상태로 계산됐다. 단정할 때 이 점을 감안해라.');
+      L.push('  - 자식운과 말년운은 시주가 맡는 영역이라 말할 수 없다. 물으면 "시각을 알아야 본다"고 답해라.');
+      L.push('  - 각 항목의 첫 문단 어딘가에 시각을 몰라 이 부분은 덜 확실하다는 점을 한 번만 짧게 적어라. 매 문단 반복하지 마라.');
+    }
     if (R.lunar) L.push('음력 생일: ' + R.lunar.y + '년 ' + (R.lunar.leap ? '윤' : '') + R.lunar.m + '월 ' + R.lunar.d + '일');
     L.push('사주 기준 연도(입춘 기준): ' + R.sajuYear + '년, 띠: ' + R.zodiac);
     L.push('');
@@ -63,7 +69,7 @@
     L.push(pillarLine(R.pillars[0], '  년주'));
     L.push(pillarLine(R.pillars[1], '  월주'));
     L.push(pillarLine(R.pillars[2], '  일주') + '  ← 일간 ' + S.STEM_H[R.dm] + '(' + S.EL[R.dmEl] + ', ' + (R.dmYin ? '음' : '양') + ')이 이 사람 자신');
-    if (R.unknownTime) L.push('  시주: 불명 (아래 시주 글자는 정오 기준 임시값이니 해석에 쓰지 말 것)');
+    if (R.unknownTime) L.push('  시주: 불명 — 아래 한 줄은 정오 기준 임시값이다. 해석에 쓰지 마라.');
     L.push(pillarLine(R.pillars[3], '  시주'));
     L.push('');
     L.push('오행 세력: ' +
