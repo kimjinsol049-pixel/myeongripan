@@ -274,7 +274,7 @@
      전체 저장 — 내용을 전부 담아 세로로 길게 그린다.
      캔버스 높이 한계가 있어 12000px 단위로 쪽을 나눈다.
      ============================================================ */
-  var PAGE_MAX = 11000;
+  var PAGE_MAX = 15000;   // 한 장의 최대 높이 (1080×15000 은 브라우저 캔버스 한계 안쪽)
 
   /** 텍스트를 블록 목록으로 바꾼다. 각 블록은 높이를 미리 계산해 둔다. */
   function buildBlocks(ctx, w, parts) {
@@ -336,10 +336,15 @@
 
   /** 블록들을 쪽으로 나눠 캔버스 배열을 만든다 */
   function paint(blocks, headerDraw, footerNote, pageLabel) {
-    var pages = [], cur = [], h = 0;
     var headH = headerDraw ? headerDraw.h : 0;
+    var body = blocks.reduce(function (a, b) { return a + b.h; }, 0);
+    var total = headH + body + 150;
+    // 쪽 수를 먼저 정하고 그만큼 고르게 나눈다 (마지막에 얇은 조각이 남지 않게)
+    var n = Math.max(1, Math.ceil(total / PAGE_MAX));
+    var target = Math.ceil(body / n);
+    var pages = [], cur = [], h = 0;
     blocks.forEach(function (b) {
-      if (h + b.h > PAGE_MAX - 140 && cur.length) { pages.push({ blocks: cur, h: h }); cur = []; h = 0; }
+      if (cur.length && h + b.h > target && pages.length < n - 1) { pages.push({ blocks: cur, h: h }); cur = []; h = 0; }
       cur.push(b); h += b.h;
     });
     if (cur.length) pages.push({ blocks: cur, h: h });
