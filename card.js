@@ -335,22 +335,37 @@
   }
 
   /** 블록들을 쪽으로 나눠 캔버스 배열을 만든다 */
-  function paint(blocks, headerDraw, footerNote, pageLabel) {
+  function paint(blocks, headerDraw, footerNote, pageLabel, opt) {
+    opt = opt || {};
+    var limit = opt.pageMax || PAGE_MAX;
     var headH = headerDraw ? headerDraw.h : 0;
     var body = blocks.reduce(function (a, b) { return a + b.h; }, 0);
-    var total = headH + body + 150;
-    // 쪽 수를 먼저 정하고 그만큼 고르게 나눈다 (마지막에 얇은 조각이 남지 않게)
-    var n = Math.max(1, Math.ceil(total / PAGE_MAX));
-    var target = Math.ceil(body / n);
     var pages = [], cur = [], h = 0;
-    blocks.forEach(function (b) {
-      if (cur.length && h + b.h > target && pages.length < n - 1) { pages.push({ blocks: cur, h: h }); cur = []; h = 0; }
-      cur.push(b); h += b.h;
-    });
-    if (cur.length) pages.push({ blocks: cur, h: h });
+
+    if (opt.fixed) {
+      // PDF 용 — 쪽 높이를 고정하고 블록이 잘리지 않게 넘긴다
+      var room = limit - headH - 150;
+      blocks.forEach(function (b) {
+        if (cur.length && h + b.h > room) {
+          pages.push({ blocks: cur, h: h }); cur = []; h = 0;
+          room = limit - (PAD + 150) - 150;
+        }
+        cur.push(b); h += b.h;
+      });
+      if (cur.length) pages.push({ blocks: cur, h: h });
+    } else {
+      // 쪽 수를 먼저 정하고 그만큼 고르게 나눈다 (마지막에 얇은 조각이 남지 않게)
+      var n = Math.max(1, Math.ceil((headH + body + 150) / limit));
+      var target = Math.ceil(body / n);
+      blocks.forEach(function (b) {
+        if (cur.length && h + b.h > target && pages.length < n - 1) { pages.push({ blocks: cur, h: h }); cur = []; h = 0; }
+        cur.push(b); h += b.h;
+      });
+      if (cur.length) pages.push({ blocks: cur, h: h });
+    }
 
     return pages.map(function (pg, pi) {
-      var H = Math.max(600, (pi === 0 ? headH : PAD + 90) + pg.h + 150);
+      var H = opt.fixed ? limit : Math.max(600, (pi === 0 ? headH : PAD + 90) + pg.h + 150);
       var f = frame(H), ctx = f.ctx;
       var y = PAD + 110;
       if (pi === 0 && headerDraw) { headerDraw.draw(ctx); y = headerDraw.h; }
@@ -359,6 +374,37 @@
       footer(ctx, H, pages.length > 1 ? (footerNote + ' · ' + (pi + 1) + '/' + pages.length) : footerNote);
       return f.cv;
     });
+  }
+
+  /* ---------- PDF ---------- */
+  var JSPDF_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.1/jspdf.umd.min.js';
+  var jspdfPromise = null;
+  function loadJsPDF() {
+    if (global.jspdf && global.jspdf.jsPDF) return Promise.resolve(global.jspdf.jsPDF);
+    if (jspdfPromise) return jspdfPromise;
+    jspdfPromise = new Promise(function (ok, fail) {
+      var s = document.createElement('script');
+      s.src = JSPDF_URL;
+      s.onload = function () {
+        if (global.jspdf && global.jspdf.jsPDF) ok(global.jspdf.jsPDF);
+        else fail({ code: 'pdf_lib', message: 'jsPDF 로드 실패' });
+      };
+      s.onerror = function () { jspdfPromise = null; fail({ code: 'pdf_lib', message: 'PDF 모듈을 불러오지 못했습니다. 연결을 확인하세요.' }); };
+      document.head.appendChild(s);
+    });
+    return jspdfPromise;
+  }
+  /** 고정 높이 캔버스들을 그대로 한 장씩 PDF 쪽으로 넣는다 */
+  function toPDF(canvases, filename) {
+    return loadJsPDF().then(function (JsPDF) {
+      var w = canvases[0].width, h = canvases[0].height;
+      var doc = new JsPDF({ orientation: h >= w ? 'p' : 'l', unit: 'px', format: [w, h], compress: true });
+      canvases.forEach(function (cv, i) {
+        if (i) doc.addPage([cv.width, cv.height], cv.height >= cv.width ? 'p' : 'l');
+        doc.addImage(cv.toDataURL('image/jpeg', 0.88), 'JPEG', 0, 0, cv.width, cv.height);
+      });
+      return doc.output('blob');
+    }).then(function (blob) { return saveBlob(blob, filename); });
   }
 
   function shinsalParts(R) {
@@ -378,7 +424,7 @@
   }
 
   /** 개인 사주 — 전체 */
-  function soloFull(R, person, store, defs) {
+  function soloFull(R, person, store, defs, opt) {
     return fontsReady().then(function () {
       var w = W - PAD * 2;
       var mc = document.createElement('canvas').getContext('2d');
@@ -418,12 +464,12 @@
       });
 
       var blocks = buildBlocks(mc, w, parts);
-      return paint(blocks, header, '띠 ' + R.zodiac + ' · 공망 ' + R.gongmang.map(function (b) { return S.BRANCH_H[b]; }).join(''), person.name + ' 사주');
+      return paint(blocks, header, '띠 ' + R.zodiac + ' · 공망 ' + R.gongmang.map(function (b) { return S.BRANCH_H[b]; }).join(''), person.name + ' 사주', opt);
     });
   }
 
   /** 궁합 — 전체 */
-  function matchFull(list, Rs, G, stores, groupStore, pairDefs, groupDefs) {
+  function matchFull(list, Rs, G, stores, groupStore, pairDefs, groupDefs, opt) {
     return fontsReady().then(function () {
       var w = W - PAD * 2;
       var mc = document.createElement('canvas').getContext('2d');
@@ -474,9 +520,12 @@
       var tot = G.merged.reduce(function (a, b) { return a + b; }, 0) || 1;
       return paint(blocks, header,
         '합산 오행 ' + S.EL.map(function (e, k) { return e + Math.round(G.merged[k] / tot * 100); }).join(' '),
-        list.map(function (p) { return p.name; }).join('·') + ' 궁합');
+        list.map(function (p) { return p.name; }).join('·') + ' 궁합', opt);
     });
   }
+
+  // A4 비율(1:1.414) 고정 쪽. PDF 한 쪽에 그대로 들어간다.
+  var PDF_PAGE = { pageMax: Math.round(W * 1.414), fixed: true };
 
   /** 여러 장을 차례로 저장한다 */
   function saveAll(canvases, base) {
@@ -493,26 +542,28 @@
   }
 
   /* ---------- 저장 ---------- */
+  function saveBlob(blob, filename) {
+    if (global.claude && global.claude.use) {
+      return global.claude.use('downloads').then(function (d) {
+        if (!d) throw { code: 'unavailable', message: 'downloads unavailable' };
+        return d.save({ filename: filename, data: blob }).then(function () { return 'saved'; });
+      });
+    }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
+    return Promise.resolve('saved');
+  }
   function save(cv, filename) {
     return new Promise(function (ok, fail) {
       cv.toBlob(function (b) { b ? ok(b) : fail({ code: 'blob', message: 'toBlob failed' }); }, 'image/png');
-    }).then(function (blob) {
-      if (global.claude && global.claude.use) {
-        return global.claude.use('downloads').then(function (d) {
-          if (!d) throw { code: 'unavailable', message: 'downloads unavailable' };
-          return d.save({ filename: filename, data: blob }).then(function () { return 'saved'; });
-        });
-      }
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = filename;
-      document.body.appendChild(a); a.click();
-      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
-      return 'saved';
-    });
+    }).then(function (blob) { return saveBlob(blob, filename); });
   }
 
   global.Card = {
-    solo: solo, pair: pair, group: group, save: save,
-    soloFull: soloFull, matchFull: matchFull, saveAll: saveAll
+    solo: solo, pair: pair, group: group, save: save, saveBlob: saveBlob,
+    soloFull: soloFull, matchFull: matchFull, saveAll: saveAll,
+    toPDF: toPDF, PDF_PAGE: PDF_PAGE
   };
 })(typeof window !== 'undefined' ? window : this);

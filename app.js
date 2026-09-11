@@ -750,11 +750,30 @@
       });
     }).catch(imgErr);
   }
+  /** 인쇄 대화상자를 거치지 않고 PDF 파일을 직접 만들어 저장한다 */
+  function savePDF(makeCanvases, base) {
+    toast('PDF를 만드는 중…');
+    return makeCanvases().then(function (list) {
+      return Card.toPDF(list, base + '.pdf').then(function () {
+        toast(list.length + '쪽 PDF를 저장했습니다');
+      });
+    }).catch(function (e) {
+      var code = e && e.code;
+      if (code === 'declined') return;
+      if (code === 'pdf_lib') toast(e.message || 'PDF 모듈을 불러오지 못했습니다');
+      else if (code === 'unavailable' || code === 'not_granted' || code === 'capability_disabled') toast('이 화면에서는 저장이 막혀 있습니다. 웹사이트에서 저장하세요.');
+      else if (code === 'rejected_extension' || code === 'extension_not_enabled') toast('이 화면에서는 PDF 저장이 막혀 있습니다. 전체 이미지로 저장하세요.');
+      else toast('PDF 저장에 실패했습니다. 전체 이미지로 저장해 보세요.');
+    });
+  }
+  /** 브라우저 인쇄 (원하는 사람만) */
   function printPDF() {
     document.querySelectorAll('details.glossary').forEach(function (d) { d.open = false; });
     toast('인쇄 창에서 대상을 "PDF로 저장"으로 고르세요');
-    try { setTimeout(function () { window.print(); }, 250); }
-    catch (e) { toast('이 화면에서는 인쇄가 막혀 있습니다. 웹사이트에서 저장하세요.'); }
+    setTimeout(function () {
+      try { window.print(); }
+      catch (e) { toast('이 브라우저에서는 인쇄 창을 열 수 없습니다. "PDF로 저장"을 쓰세요.'); }
+    }, 250);
   }
 
   /* ---------- 계정 · 동기화 ---------- */
@@ -1169,6 +1188,7 @@
       '<button class="btn ghost" id="imgFull">전체 이미지 저장</button>' +
       '<button class="btn ghost" id="img">요약 카드</button>' +
       '<button class="btn ghost" id="pdf">PDF로 저장</button>' +
+      '<button class="btn ghost" id="print">브라우저 인쇄</button>' +
       (readOnly ? '' : '<button class="btn ghost" id="home">저장된 목록</button>') +
       '</div>' + progressHTML('prog') + '<div id="aistat"></div>' +
       '<div id="sharebox"></div>' +
@@ -1190,7 +1210,10 @@
     $('#imgFull').onclick = function () {
       saveFullImage(function () { return Card.soloFull(R, person, store, defs); }, 'saju_' + person.name + '_전체');
     };
-    $('#pdf').onclick = printPDF;
+    $('#pdf').onclick = function () {
+      savePDF(function () { return Card.soloFull(R, person, store, defs, Card.PDF_PAGE); }, 'saju_' + person.name);
+    };
+    $('#print').onclick = printPDF;
     wireChat('chat', function () { return I.chatSeed(I.brief(R), Object.keys(store).map(function (k) { return store[k]; }).join('\n\n')); });
 
     function generate(force) {
@@ -1365,6 +1388,7 @@
       '<button class="btn ghost" id="imgFull">전체 이미지 저장</button>' +
       '<button class="btn ghost" id="img">요약 카드</button>' +
       '<button class="btn ghost" id="pdf">PDF로 저장</button>' +
+      '<button class="btn ghost" id="print">브라우저 인쇄</button>' +
       (readOnly ? '' : '<button class="btn ghost" id="savem">기록 저장</button>' +
         '<button class="btn ghost" id="home">처음으로</button>') +
       '</div>' + progressHTML('prog') + '<div id="aistat"></div><div id="sharebox"></div>');
@@ -1454,7 +1478,12 @@
         return Card.matchFull(list, Rs, G, stores, groupStore, pairDefs, many ? I.GROUP_SECTIONS : null);
       }, baseName + '_전체');
     };
-    $('#pdf').onclick = printPDF;
+    $('#pdf').onclick = function () {
+      savePDF(function () {
+        return Card.matchFull(list, Rs, G, stores, groupStore, pairDefs, many ? I.GROUP_SECTIONS : null, Card.PDF_PAGE);
+      }, baseName);
+    };
+    $('#print').onclick = printPDF;
     app.querySelectorAll('[data-genpair]').forEach(function (b) {
       b.onclick = function () { genPair(b.dataset.genpair, true, true); };
     });
